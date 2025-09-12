@@ -4,7 +4,7 @@ import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
-import { ImageViewerDialog } from "./image-viewer-dialog"; // Import the new component
+import { ImageViewerDialog } from "./image-viewer-dialog";
 
 interface ImageGalleryProps {
   files: File[];
@@ -19,9 +19,7 @@ export function ImageGallery({
   onSelectImage,
   gridCols,
 }: ImageGalleryProps) {
-  const [imageSrcs, setImageSrcs] = React.useState<Map<string, string>>(
-    new Map()
-  );
+  const [imageSrcs, setImageSrcs] = React.useState<Map<string, string>>(new Map());
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
@@ -30,17 +28,13 @@ export function ImageGallery({
     const objectUrlsToRevoke: string[] = [];
 
     files.forEach((file) => {
-      // Check if the file is a "rehydrated" file from local storage (which will have a dataURL property)
-      // @ts-ignore - webkitRelativePath is not standard but used in this app
-      if (file.dataURL) {
-        // @ts-ignore
-        newImageSrcs.set(file.name, file.dataURL);
-      } else {
-        const url = URL.createObjectURL(file);
-        newImageSrcs.set(file.name, url);
-        objectUrlsToRevoke.push(url);
-      }
+      // The File object from local storage won't have a dataURL property.
+      // We create an object URL for all files to display them.
+      const url = URL.createObjectURL(file);
+      newImageSrcs.set(file.name, url);
+      objectUrlsToRevoke.push(url);
     });
+
     setImageSrcs(newImageSrcs);
 
     // Cleanup object URLs on unmount or when files change
@@ -89,7 +83,7 @@ export function ImageGallery({
                 !isSingleColumn && "aspect-square"
               )}
               onClick={() => onSelectImage(file)}
-              onDoubleClick={() => handleDoubleClick(file)} // Add double-click handler
+              onDoubleClick={() => handleDoubleClick(file)}
             >
               <img
                 src={imageSrcs.get(file.name)}

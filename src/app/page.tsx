@@ -40,12 +40,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useLocalStorage } from "@/hooks/use-local-storage"; // Import the hook
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
-// Define a storable image type
 interface StoredImage {
   name: string;
   type: string;
@@ -55,10 +54,32 @@ interface StoredImage {
   webkitRelativePath: string;
 }
 
+// Helper to convert a StoredImage back to a File object
+const storedImageToFile = (stored: StoredImage): File => {
+  const byteString = atob(stored.dataURL.split(",")[1]);
+  const mimeString = stored.dataURL.split(",")[0].split(":")[1].split(";")[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  const file = new File([ab], stored.name, {
+    type: mimeString,
+    lastModified: stored.lastModified,
+  });
+  Object.defineProperty(file, "webkitRelativePath", {
+    value: stored.webkitRelativePath,
+    writable: false,
+  });
+  return file;
+};
+
 export default function Home() {
+  const [storedImages, setStoredImages] = useLocalStorage<StoredImage[]>(
+    "imageViewerFiles",
+    []
+  );
   const [allFiles, setAllFiles] = React.useState<File[]>([]);
-  const [filteredFiles, setFilteredFiles] = React.useState<File[]>([]);
-  const [fileTree, setFileTree] = React.useState<FileTreeNode | null>(null);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
@@ -66,51 +87,63 @@ export default function Home() {
   const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
 
-  // Use localStorage to persist images
-  const [storedImages, setStoredImages] = useLocalStorage<StoredImage[]>(
-    "imageViewerFiles",
-    []
-  );
-
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
   const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
 
-  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] =
-    React.useState(false);
-  const [isRightPanelCollapsed, setIsRightPanelCollapsed] =
-    React.useState(false);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = React.useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = React.useState(false);
 
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
-  // Load images from local storage on initial mount
+  // Effect to load files from local storage on initial mount
   React.useEffect(() => {
-    if (storedImages.length > 0) {
-      const loadedFiles = storedImages.map((stored) => {
-        const byteString = atob(stored.dataURL.split(",")[1]);
-        const mimeString = stored.dataURL.split(",")[0].split(":")[1].split(";")[0];
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
-        const file = new File([ab], stored.name, { type: mimeString, lastModified: stored.lastModified });
-        // Manually assign webkitRelativePath as it's not part of File constructor
-        Object.defineProperty(file, 'webkitRelativePath', {
-          value: stored.webkitRelativePath,
-          writable: false
-        });
-        return file;
-      });
+    if (storedImages.length > 0 && allFiles.length === 0) {
+      const loadedFiles = storedImages.map(storedImageToFile);
       setAllFiles(loadedFiles);
-      const tree = buildFileTree(loadedFiles);
-      setFileTree(tree);
-      if (tree) {
-        setSelectedPath(tree.path);
-      }
     }
-  }, []); // Run only once on mount
+  }, [storedImages, allFiles.length]);
+
+  // Memoize derived state to avoid re-computation
+  const fileTree = React.useMemo(() => buildFileTree(allFiles), [allFiles]);
+
+  const filteredFiles = React.useMemo(() => {
+    if (!selectedPath) {
+      return [];
+    }
+
+    let newFilteredFiles = allFiles.filter((file) => {
+      if (viewSubfolders) {
+        return file.webkitRelativePath.startsWith(selectedPath);
+      } else {
+        const parentDirectory = file.webkitRelativePath.substring(
+          0,
+          file.webkitRelativePath.lastIndexOf("/")
+        );
+        return parentDirectory === selectedPath;
+      }
+    });
+
+    newFilteredFiles.sort((a, b) => {
+      let compareValue = 0;
+      if (sortBy === "lastModified") {
+        compareValue = a.lastModified - b.lastModified;
+      } else if (sortBy === "size") {
+        compareValue = a.size - b.size;
+      }
+      return sortOrder === "asc" ? compareValue : -compareValue;
+    });
+
+    return newFilteredFiles;
+  }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder]);
+
+  // Effect to set initial selected path when file tree is ready
+  React.useEffect(() => {
+    if (fileTree && !selectedPath) {
+      setSelectedPath(fileTree.path);
+    }
+  }, [fileTree, selectedPath]);
 
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
@@ -119,14 +152,10 @@ export default function Home() {
 
   const sliderValue = MAX_COLS + MIN_COLS - gridCols;
 
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const selectedFiles = Array.from(event.target.files);
-      const imageFiles = selectedFiles.filter((file) =>
-        file.type.startsWith("image/")
-      );
+      const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
 
       const storableImages: StoredImage[] = await Promise.all(
         imageFiles.map(async (file) => {
@@ -146,32 +175,25 @@ export default function Home() {
         })
       );
 
-      setStoredImages(storableImages); // Save to local storage
+      setStoredImages(storableImages);
       setAllFiles(imageFiles);
-
-      const tree = buildFileTree(imageFiles);
-      setFileTree(tree);
-
-      if (tree) {
-        setSelectedPath(tree.path);
-      } else {
-        setSelectedPath("");
-      }
       setSelectedImage(null);
+      // Reset selected path to the root of the new tree
+      const newTree = buildFileTree(imageFiles);
+      setSelectedPath(newTree ? newTree.path : "");
     }
   };
 
   const handleClearImages = () => {
+    setStoredImages([]);
     setAllFiles([]);
-    setFilteredFiles([]);
-    setFileTree(null);
     setSelectedPath("");
     setSelectedImage(null);
-    setStoredImages([]); // Clear from local storage
   };
 
   const handleFolderSelect = (path: string) => {
     setSelectedPath(path);
+    setSelectedImage(null);
   };
 
   const handleFolderSelectClick = () => {
@@ -191,40 +213,6 @@ export default function Home() {
       panel.isCollapsed() ? panel.expand() : panel.collapse();
     }
   };
-
-  React.useEffect(() => {
-    if (!selectedPath) {
-      setFilteredFiles([]);
-      return;
-    }
-
-    let newFilteredFiles = allFiles.filter((file) => {
-      if (viewSubfolders) {
-        return file.webkitRelativePath.startsWith(selectedPath);
-      } else {
-        const parentDirectory = file.webkitRelativePath.substring(
-          0,
-          file.webkitRelativePath.lastIndexOf("/")
-        );
-        return parentDirectory === selectedPath;
-      }
-    });
-
-    // Apply sorting
-    newFilteredFiles.sort((a, b) => {
-      let compareValue = 0;
-      if (sortBy === "lastModified") {
-        compareValue = a.lastModified - b.lastModified;
-      } else if (sortBy === "size") {
-        compareValue = a.size - b.size;
-      }
-
-      return sortOrder === "asc" ? compareValue : -compareValue;
-    });
-
-    setFilteredFiles(newFilteredFiles);
-    setSelectedImage(null);
-  }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder]);
 
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
