@@ -40,13 +40,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { storeImages, getStoredImages, clearImages, StoredImage } from "@/lib/image-db";
+import { storeImages, getStoredImages, clearImages } from "@/lib/image-db";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
 export default function Home() {
-  const [allFiles, setAllFiles] = React.useState<StoredImage[]>([]);
+  const [allFiles, setAllFiles] = React.useState<File[]>([]);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
@@ -76,15 +76,14 @@ export default function Home() {
   }, []);
 
   // Memoize derived state to avoid re-computation
-  const fileTree = React.useMemo(() => buildFileTree(allFiles.map(f => f.file)), [allFiles]);
+  const fileTree = React.useMemo(() => buildFileTree(allFiles), [allFiles]);
 
   const filteredFiles = React.useMemo(() => {
     if (!selectedPath) {
       return [];
     }
 
-    let newFilteredFiles = allFiles.filter((storedImage) => {
-      const file = storedImage.file;
+    let newFilteredFiles = allFiles.filter((file) => {
       if (viewSubfolders) {
         return file.webkitRelativePath.startsWith(selectedPath);
       } else {
@@ -99,9 +98,9 @@ export default function Home() {
     newFilteredFiles.sort((a, b) => {
       let compareValue = 0;
       if (sortBy === "lastModified") {
-        compareValue = a.file.lastModified - b.file.lastModified;
+        compareValue = a.lastModified - b.lastModified;
       } else if (sortBy === "size") {
-        compareValue = a.file.size - b.file.size;
+        compareValue = a.size - b.size;
       }
       return sortOrder === "asc" ? compareValue : -compareValue;
     });
@@ -129,8 +128,7 @@ export default function Home() {
       const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
 
       await storeImages(imageFiles);
-      const storedImages = await getStoredImages();
-      setAllFiles(storedImages);
+      setAllFiles(imageFiles);
       setSelectedImage(null);
       
       const newTree = buildFileTree(imageFiles);

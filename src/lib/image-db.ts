@@ -4,50 +4,7 @@ import { openDB, DBSchema } from 'idb';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 4; // Incremented version for schema change
-
-const THUMBNAIL_MAX_WIDTH = 256;
-
-const THUMBNAIL_MAX_HEIGHT = 256;
-
-// Helper function to generate a thumbnail from a File object
-async function generateThumbnail(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          return reject(new Error('Could not get canvas context'));
-        }
-
-        let { width, height } = img;
-        if (width > height) {
-          if (width > THUMBNAIL_MAX_WIDTH) {
-            height *= THUMBNAIL_MAX_WIDTH / width;
-            width = THUMBNAIL_MAX_WIDTH;
-          }
-        } else {
-          if (height > THUMBNAIL_MAX_HEIGHT) {
-            width *= THUMBNAIL_MAX_HEIGHT / height;
-            height = THUMBNAIL_MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.8)); // Use JPEG for smaller size
-      };
-      img.onerror = reject;
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+const DB_VERSION = 3; // Version is correct from last change
 
 // This interface defines the shape of the object we'll store in IndexedDB.
 interface StorableFile {
@@ -56,13 +13,6 @@ interface StorableFile {
   lastModified: number;
   webkitRelativePath: string;
   buffer: ArrayBuffer;
-  thumbnail: string; // Added thumbnail as a data URL
-}
-
-// This is the object we'll work with in the application
-export interface StoredImage {
-  file: File;
-  thumbnail: string;
 }
 
 interface MyDB extends DBSchema {
@@ -75,7 +25,7 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 4) {
+      if (oldVersion < 3) {
         if (db.objectStoreNames.contains(STORE_NAME)) {
           db.deleteObjectStore(STORE_NAME);
         }
@@ -86,6 +36,7 @@ async function getDb() {
 }
 
 export async function storeImages(files: File[]) {
+  // First, prepare all the data outside of the transaction.
   const storableFiles: StorableFile[] = await Promise.all(
     files.map(async (file) => ({
       name: file.name,
@@ -93,34 +44,37 @@ export async function storeImages(files: File[]) {
       lastModified: file.lastModified,
       webkitRelativePath: file.webkitRelativePath,
       buffer: await file.arrayBuffer(),
-      thumbnail: await generateThumbnail(file),
     }))
   );
 
   const db = await getDb();
   const tx = db.transaction(STORE_NAME, 'readwrite');
 
+  // Now, perform all operations within the same transaction without awaiting them individually.
+  // We use Promise.all to wait for all operations to complete together.
   await Promise.all([
     tx.store.clear(),
     ...storableFiles.map(sf => tx.store.put(sf)),
-    tx.done,
+    tx.done, // This special promise resolves when the transaction is complete.
   ]);
 }
 
-export async function getStoredImages(): Promise<StoredImage[]> {
+export async function getStoredImages(): Promise<File[]> {
   const db = await getDb();
   const storableFiles = await db.getAll(STORE_NAME);
 
+  // Reconstruct File objects from the stored plain objects.
   return storableFiles.map(sf => {
     const file = new File([sf.buffer], sf.name, {
       type: sf.type,
       lastModified: sf.lastModified,
     });
+    // Manually re-attach the webkitRelativePath property.
     Object.defineProperty(file, 'webkitRelativePath', {
       value: sf.webkitRelativePath,
       writable: false,
     });
-    return { file, thumbnail: sf.thumbnail };
+    return file;
   });
 }
 
