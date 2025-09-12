@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { storeImages, getStoredImages, clearImages, StoredImage } from "@/lib/image-db";
+import { Progress } from "@/components/ui/progress";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
@@ -57,6 +58,8 @@ export default function Home() {
   const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
   
   const [itemsPerPage, setItemsPerPage] = React.useState(() => {
     if (typeof window !== "undefined") {
@@ -83,10 +86,12 @@ export default function Home() {
 
   React.useEffect(() => {
     async function loadInitialImages() {
+      setIsLoading(true);
       const images = await getStoredImages();
       if (images.length > 0) {
         setAllFiles(images);
       }
+      setIsLoading(false);
     }
     loadInitialImages();
   }, []);
@@ -159,7 +164,10 @@ export default function Home() {
       const selectedFiles = Array.from(event.target.files);
       const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
 
-      await storeImages(imageFiles);
+      setIsLoading(true);
+      setProgress(0);
+      await storeImages(imageFiles, (p) => setProgress(p));
+      
       const storedImages = await getStoredImages();
       setAllFiles(storedImages);
       setSelectedImage(null);
@@ -167,6 +175,7 @@ export default function Home() {
       
       const newTree = buildFileTree(imageFiles);
       setSelectedPath(newTree ? newTree.path : "");
+      setIsLoading(false);
     }
   };
 
@@ -204,7 +213,15 @@ export default function Home() {
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b p-4">
-        <h1 className="text-xl font-bold">Image Viewer</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold">Image Viewer</h1>
+          {isLoading && (
+            <div className="flex w-48 items-center gap-2">
+              <Progress value={progress} className="w-full" />
+              <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-6">
           <div className="flex w-48 items-center gap-2">
             <Label htmlFor="grid-slider" className="whitespace-nowrap">
@@ -278,7 +295,7 @@ export default function Home() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button onClick={handleFolderSelectClick} size="icon" variant="outline">
+                        <Button onClick={handleFolderSelectClick} size="icon" variant="outline" disabled={isLoading}>
                           <Folder className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -290,7 +307,7 @@ export default function Home() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button onClick={handleClearImages} size="icon" variant="outline">
+                        <Button onClick={handleClearImages} size="icon" variant="outline" disabled={isLoading}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -307,6 +324,7 @@ export default function Home() {
                             id="view-subfolders"
                             checked={viewSubfolders}
                             onCheckedChange={setViewSubfolders}
+                            disabled={isLoading}
                           />
                           <Label
                             htmlFor="view-subfolders"

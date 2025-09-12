@@ -84,31 +84,39 @@ async function getDb() {
   });
 }
 
-export async function storeImages(files: File[]) {
-  const storableFiles: StorableFile[] = await Promise.all(
-    files.map(async (file) => ({
-      name: file.name,
-      type: file.type,
-      lastModified: file.lastModified,
-      webkitRelativePath: file.webkitRelativePath,
-      buffer: await file.arrayBuffer(),
-      thumbnail: await generateThumbnail(file),
-    }))
-  );
-
+export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
   const db = await getDb();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
 
-  // Clear the store first
   await store.clear();
 
-  // Add new files in a loop
-  for (const sf of storableFiles) {
-    store.put(sf);
+  let processedCount = 0;
+  const totalFiles = files.length;
+
+  for (const file of files) {
+    const [thumbnail, buffer] = await Promise.all([
+      generateThumbnail(file),
+      file.arrayBuffer(),
+    ]);
+
+    const storableFile: StorableFile = {
+      name: file.name,
+      type: file.type,
+      lastModified: file.lastModified,
+      webkitRelativePath: file.webkitRelativePath,
+      buffer,
+      thumbnail,
+    };
+
+    await store.put(storableFile);
+
+    processedCount++;
+    if (onProgress) {
+      onProgress((processedCount / totalFiles) * 100);
+    }
   }
 
-  // Wait for the transaction to complete
   await tx.done;
 }
 
