@@ -38,7 +38,7 @@ export default function Home() {
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
-  const [gridCols, setGridCols] = React.useState(4);
+  const [gridCols, setGridCols] = React.useState(4); // This will now represent the number of columns directly
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
   const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
@@ -148,8 +148,8 @@ export default function Home() {
             </Label>
             <Slider
               id="grid-slider"
-              min={1}
-              max={12}
+              min={1} // Minimum number of columns (largest image size)
+              max={12} // Maximum number of columns (smallest image size)
               step={1}
               value={[gridCols]}
               onValueChange={(value) => setGridCols(value[0])}
