@@ -62,7 +62,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
     }
 
     // We only support PNG for ComfyUI metadata
-    
+
     if (image.type !== "image/png") {
       setComfyMetadata(null);
       return;
@@ -93,7 +93,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
 
         // Sanitize the string to replace invalid JSON values like NaN
         jsonString = jsonString.replace(/NaN/g, "null");
-
+        console.log('workflow')
         const workflow = JSON.parse(jsonString);
 
         const ksamplerNodeEntry = Object.entries(workflow).find(

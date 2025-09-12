@@ -40,45 +40,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useLocalStorage } from "@/hooks/use-local-storage";
+import { storeImages, getStoredImages, clearImages } from "@/lib/image-db";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
-interface StoredImage {
-  name: string;
-  type: string;
-  size: number;
-  lastModified: number;
-  dataURL: string;
-  webkitRelativePath: string;
-}
-
-// Helper to convert a StoredImage back to a File object
-const storedImageToFile = (stored: StoredImage): File => {
-  const byteString = atob(stored.dataURL.split(",")[1]);
-  const mimeString = stored.dataURL.split(",")[0].split(":")[1].split(";")[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
-  }
-  const file = new File([ab], stored.name, {
-    type: mimeString,
-    lastModified: stored.lastModified,
-  });
-  Object.defineProperty(file, "webkitRelativePath", {
-    value: stored.webkitRelativePath,
-    writable: false,
-  });
-  return file;
-};
-
 export default function Home() {
-  const [storedImages, setStoredImages] = useLocalStorage<StoredImage[]>(
-    "imageViewerFiles",
-    []
-  );
+  const [allFiles, setAllFiles] = React.useState<File[]>([]);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
@@ -96,18 +64,22 @@ export default function Home() {
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
-  // Derive `allFiles` from `storedImages`. This is now the single source of truth.
-  const allFiles = React.useMemo(() => storedImages.map(storedImageToFile), [storedImages]);
+  // Effect to load images from IndexedDB on initial component mount
+  React.useEffect(() => {
+    async function loadInitialImages() {
+      const images = await getStoredImages();
+      if (images.length > 0) {
+        setAllFiles(images);
+      }
+    }
+    loadInitialImages();
+  }, []);
 
   // Memoize derived state to avoid re-computation
   const fileTree = React.useMemo(() => buildFileTree(allFiles), [allFiles]);
 
   const filteredFiles = React.useMemo(() => {
     if (!selectedPath) {
-      // If nothing is selected, and we have files, default to showing the root.
-      if (fileTree) {
-        setSelectedPath(fileTree.path);
-      }
       return [];
     }
 
@@ -134,7 +106,7 @@ export default function Home() {
     });
 
     return newFilteredFiles;
-  }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder, fileTree]);
+  }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder]);
 
   // Effect to set initial selected path when file tree is ready
   React.useEffect(() => {
@@ -155,37 +127,18 @@ export default function Home() {
       const selectedFiles = Array.from(event.target.files);
       const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
 
-      const storableImages: StoredImage[] = await Promise.all(
-        imageFiles.map(async (file) => {
-          const dataURL = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          return {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            lastModified: file.lastModified,
-            dataURL,
-            webkitRelativePath: file.webkitRelativePath,
-          };
-        })
-      );
-
-      // This is now the only state update needed to save and display images.
-      setStoredImages(storableImages);
+      await storeImages(imageFiles);
+      setAllFiles(imageFiles);
       setSelectedImage(null);
       
-      // Reset selected path to the root of the new tree
       const newTree = buildFileTree(imageFiles);
       setSelectedPath(newTree ? newTree.path : "");
     }
   };
 
-  const handleClearImages = () => {
-    setStoredImages([]);
+  const handleClearImages = async () => {
+    await clearImages();
+    setAllFiles([]);
     setSelectedPath("");
     setSelectedImage(null);
   };
