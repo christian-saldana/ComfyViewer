@@ -46,6 +46,7 @@ type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
 const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96];
+const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
 
 export default function Home() {
   const [allFiles, setAllFiles] = React.useState<StoredImage[]>([]);
@@ -56,7 +57,19 @@ export default function Home() {
   const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
+  
+  const [itemsPerPage, setItemsPerPage] = React.useState(() => {
+    if (typeof window !== "undefined") {
+      const storedValue = localStorage.getItem(ITEMS_PER_PAGE_KEY);
+      if (storedValue) {
+        const parsedValue = parseInt(storedValue, 10);
+        if (ITEMS_PER_PAGE_OPTIONS.includes(parsedValue)) {
+          return parsedValue;
+        }
+      }
+    }
+    return ITEMS_PER_PAGE_OPTIONS[1];
+  });
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
@@ -77,6 +90,12 @@ export default function Home() {
     }
     loadInitialImages();
   }, []);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage));
+    }
+  }, [itemsPerPage]);
 
   const fileTree = React.useMemo(() => buildFileTree(allFiles.map(f => f.file)), [allFiles]);
 
