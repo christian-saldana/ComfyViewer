@@ -154,32 +154,20 @@ export default function Home() {
       <header className="flex items-center justify-between border-b p-4">
         <h1 className="text-xl font-bold">Image Viewer</h1>
         <div className="flex items-center gap-6">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="view-subfolders"
-                    checked={viewSubfolders}
-                    onCheckedChange={setViewSubfolders}
-                  />
-                  <Label
-                    htmlFor="view-subfolders"
-                    className="cursor-pointer whitespace-nowrap"
-                  >
-                    Include Subfolders
-                  </Label>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  When enabled, shows images from all subfolders of the
-                  selected folder.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
+          <div className="flex w-48 items-center gap-2">
+            <Label htmlFor="grid-slider" className="whitespace-nowrap">
+              Image Size
+            </Label>
+            <Slider
+              id="grid-slider"
+              min={MIN_COLS}
+              max={MAX_COLS}
+              step={1}
+              value={[sliderValue]}
+              onValueChange={handleSliderChange}
+              className="w-full"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <Label htmlFor="sort-by" className="whitespace-nowrap">
               Sort By:
@@ -208,25 +196,6 @@ export default function Home() {
               )}
             </Button>
           </div>
-
-          <div className="flex w-48 items-center gap-2">
-            <Label htmlFor="grid-slider" className="whitespace-nowrap">
-              Image Size
-            </Label>
-            <Slider
-              id="grid-slider"
-              min={MIN_COLS}
-              max={MAX_COLS}
-              step={1}
-              value={[sliderValue]}
-              onValueChange={handleSliderChange}
-              className="w-full"
-            />
-          </div>
-          <Button onClick={handleFolderSelectClick}>
-            <Folder className="mr-2 h-4 w-4" />
-            Select Folder
-          </Button>
         </div>
         <input
           type="file"
@@ -253,6 +222,45 @@ export default function Home() {
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b p-4">
                 <h2 className="text-lg font-semibold">Folders</h2>
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button onClick={handleFolderSelectClick} size="icon" variant="outline">
+                          <Folder className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Select Folder</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="view-subfolders"
+                            checked={viewSubfolders}
+                            onCheckedChange={setViewSubfolders}
+                          />
+                          <Label
+                            htmlFor="view-subfolders"
+                            className="cursor-pointer whitespace-nowrap sr-only"
+                          >
+                            Include Subfolders
+                          </Label>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          When enabled, shows images from all subfolders of the
+                          selected folder.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
               <ScrollArea className="flex-1">
                 {fileTree ? (
