@@ -5,9 +5,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { ImageViewerDialog } from "./image-viewer-dialog";
+import { StoredImage } from "@/lib/image-db";
 
 interface ImageGalleryProps {
-  files: File[];
+  files: StoredImage[];
   selectedImage: File | null;
   onSelectImage: (file: File) => void;
   gridCols: number;
@@ -19,37 +20,22 @@ export function ImageGallery({
   onSelectImage,
   gridCols,
 }: ImageGalleryProps) {
-  const [imageSrcs, setImageSrcs] = React.useState<Map<string, string>>(new Map());
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    const newImageSrcs = new Map<string, string>();
-    const objectUrlsToRevoke: string[] = [];
-
-    files.forEach((file) => {
-      // The File object from local storage won't have a dataURL property.
-      // We create an object URL for all files to display them.
-      const url = URL.createObjectURL(file);
-      newImageSrcs.set(file.name, url);
-      objectUrlsToRevoke.push(url);
-    });
-
-    setImageSrcs(newImageSrcs);
-
-    // Cleanup object URLs on unmount or when files change
-    return () => {
-      objectUrlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [files]);
-
   const handleDoubleClick = (file: File) => {
-    const src = imageSrcs.get(file.name);
-    if (src) {
-      setFullscreenImageSrc(src);
-      setIsViewerOpen(true);
-    }
+    const objectUrl = URL.createObjectURL(file);
+    setFullscreenImageSrc(objectUrl);
+    setIsViewerOpen(true);
   };
+
+  // Clean up the object URL when the dialog is closed
+  React.useEffect(() => {
+    if (!isViewerOpen && fullscreenImageSrc) {
+      URL.revokeObjectURL(fullscreenImageSrc);
+      setFullscreenImageSrc(null);
+    }
+  }, [isViewerOpen, fullscreenImageSrc]);
 
   if (files.length === 0) {
     return (
@@ -72,7 +58,7 @@ export function ImageGallery({
           className="grid gap-4 p-4"
           style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
         >
-          {files.map((file) => (
+          {files.map(({ file, thumbnail }) => (
             <div
               key={file.name}
               className={cn(
@@ -86,7 +72,7 @@ export function ImageGallery({
               onDoubleClick={() => handleDoubleClick(file)}
             >
               <img
-                src={imageSrcs.get(file.name)}
+                src={thumbnail}
                 alt={file.name}
                 className={cn(
                   "h-full w-full",
