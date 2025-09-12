@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 
 export default function Home() {
   const [allFiles, setAllFiles] = React.useState<File[]>([]);
@@ -29,6 +30,7 @@ export default function Home() {
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
+  const [gridCols, setGridCols] = React.useState(4);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +89,7 @@ export default function Home() {
     <div className="grid h-full grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b p-4">
         <h1 className="text-xl font-bold">Image Viewer</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -113,6 +115,20 @@ export default function Home() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <div className="flex w-48 items-center gap-2">
+            <Label htmlFor="grid-slider" className="whitespace-nowrap">
+              Image Size
+            </Label>
+            <Slider
+              id="grid-slider"
+              min={1}
+              max={12}
+              step={1}
+              value={[gridCols]}
+              onValueChange={(value) => setGridCols(value[0])}
+              className="w-full"
+            />
+          </div>
           <Button onClick={handleFolderSelectClick}>
             <Folder className="mr-2 h-4 w-4" />
             Select Folder
@@ -151,6 +167,7 @@ export default function Home() {
             files={filteredFiles}
             selectedImage={selectedImage}
             onSelectImage={setSelectedImage}
+            gridCols={gridCols}
           />
         </ResizablePanel>
         <ResizableHandle withHandle />

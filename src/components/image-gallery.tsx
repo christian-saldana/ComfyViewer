@@ -9,12 +9,14 @@ interface ImageGalleryProps {
   files: File[];
   selectedImage: File | null;
   onSelectImage: (file: File) => void;
+  gridCols: number;
 }
 
 export function ImageGallery({
   files,
   selectedImage,
   onSelectImage,
+  gridCols,
 }: ImageGalleryProps) {
   const [imageUrls, setImageUrls] = React.useState<Map<string, string>>(
     new Map()
@@ -46,9 +48,14 @@ export function ImageGallery({
     );
   }
 
+  const isSingleColumn = gridCols === 1;
+
   return (
     <ScrollArea className="h-full">
-      <div className="grid grid-cols-2 gap-4 p-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+      <div
+        className="grid gap-4 p-4"
+        style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+      >
         {files.map((file) => (
           <div
             key={file.name}
@@ -56,14 +63,18 @@ export function ImageGallery({
               "group relative cursor-pointer overflow-hidden rounded-lg border-2",
               selectedImage?.name === file.name
                 ? "border-primary"
-                : "border-transparent hover:border-primary/50"
+                : "border-transparent hover:border-primary/50",
+              !isSingleColumn && "aspect-square"
             )}
             onClick={() => onSelectImage(file)}
           >
             <img
               src={imageUrls.get(file.name)}
               alt={file.name}
-              className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className={cn(
+                "h-full w-full transition-transform duration-300 group-hover:scale-105",
+                isSingleColumn ? "object-contain" : "object-cover"
+              )}
             />
             <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
               <p className="truncate text-xs font-medium text-white">
