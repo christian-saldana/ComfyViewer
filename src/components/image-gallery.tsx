@@ -60,10 +60,10 @@ export function ImageGallery({
           <div
             key={file.name}
             className={cn(
-              "group relative cursor-pointer overflow-hidden rounded-lg border-2",
+              "relative cursor-pointer overflow-hidden rounded-lg border-2",
               selectedImage?.name === file.name
                 ? "border-primary"
-                : "border-transparent hover:border-primary/50",
+                : "border-transparent",
               !isSingleColumn && "aspect-square"
             )}
             onClick={() => onSelectImage(file)}
@@ -72,7 +72,7 @@ export function ImageGallery({
               src={imageUrls.get(file.name)}
               alt={file.name}
               className={cn(
-                "h-full w-full transition-transform duration-300 group-hover:scale-105",
+                "h-full w-full",
                 isSingleColumn ? "object-contain" : "object-cover"
               )}
             />
