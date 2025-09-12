@@ -4,6 +4,7 @@ import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
+import { ImageViewerDialog } from "./image-viewer-dialog"; // Import the new component
 
 interface ImageGalleryProps {
   files: File[];
@@ -21,6 +22,8 @@ export function ImageGallery({
   const [imageUrls, setImageUrls] = React.useState<Map<string, string>>(
     new Map()
   );
+  const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
   React.useEffect(() => {
     const newImageUrls = new Map<string, string>();
@@ -35,6 +38,14 @@ export function ImageGallery({
       newImageUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [files]);
+
+  const handleDoubleClick = (file: File) => {
+    const url = imageUrls.get(file.name);
+    if (url) {
+      setFullscreenImageSrc(url);
+      setIsViewerOpen(true);
+    }
+  };
 
   if (files.length === 0) {
     return (
@@ -51,39 +62,49 @@ export function ImageGallery({
   const isSingleColumn = gridCols === 1;
 
   return (
-    <ScrollArea className="h-full">
-      <div
-        className="grid gap-4 p-4"
-        style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
-      >
-        {files.map((file) => (
-          <div
-            key={file.name}
-            className={cn(
-              "relative cursor-pointer overflow-hidden border-2",
-              selectedImage?.name === file.name
-                ? "border-primary"
-                : "border-transparent",
-              !isSingleColumn && "aspect-square"
-            )}
-            onClick={() => onSelectImage(file)}
-          >
-            <img
-              src={imageUrls.get(file.name)}
-              alt={file.name}
+    <>
+      <ScrollArea className="h-full">
+        <div
+          className="grid gap-4 p-4"
+          style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+        >
+          {files.map((file) => (
+            <div
+              key={file.name}
               className={cn(
-                "h-full w-full",
-                isSingleColumn ? "object-contain" : "object-cover"
+                "relative cursor-pointer overflow-hidden border-2",
+                selectedImage?.name === file.name
+                  ? "border-primary"
+                  : "border-transparent",
+                !isSingleColumn && "aspect-square"
               )}
-            />
-            <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
-              <p className="truncate text-xs font-medium text-white">
-                {file.name}
-              </p>
+              onClick={() => onSelectImage(file)}
+              onDoubleClick={() => handleDoubleClick(file)} // Add double-click handler
+            >
+              <img
+                src={imageUrls.get(file.name)}
+                alt={file.name}
+                className={cn(
+                  "h-full w-full",
+                  isSingleColumn ? "object-contain" : "object-cover"
+                )}
+              />
+              <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
+                <p className="truncate text-xs font-medium text-white">
+                  {file.name}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </ScrollArea>
+          ))}
+        </div>
+      </ScrollArea>
+
+      <ImageViewerDialog
+        src={fullscreenImageSrc}
+        alt={selectedImage?.name || "Fullscreen Image"}
+        open={isViewerOpen}
+        onOpenChange={setIsViewerOpen}
+      />
+    </>
   );
 }
