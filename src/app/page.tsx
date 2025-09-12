@@ -38,7 +38,7 @@ export default function Home() {
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
-  const [gridCols, setGridCols] = React.useState(4); // This will now represent the number of columns directly
+  const [gridCols, setGridCols] = React.useState(4);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
   const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
@@ -47,6 +47,22 @@ export default function Home() {
     React.useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] =
     React.useState(false);
+
+  const MIN_COLS = 1;
+  const MAX_COLS = 12;
+
+  // The slider's value is inverted from the number of columns.
+  // A high slider value means few columns (large images).
+  // A low slider value means many columns (small images).
+  const handleSliderChange = (value: number[]) => {
+    // The slider now controls "size", from 1 (small) to 12 (large).
+    // We convert this to columns, from 12 (small) to 1 (large).
+    const newGridCols = (MAX_COLS + MIN_COLS) - value[0];
+    setGridCols(newGridCols);
+  };
+
+  // We also need to provide the inverted value back to the slider.
+  const sliderValue = (MAX_COLS + MIN_COLS) - gridCols;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -148,11 +164,11 @@ export default function Home() {
             </Label>
             <Slider
               id="grid-slider"
-              min={1} // Minimum number of columns (largest image size)
-              max={12} // Maximum number of columns (smallest image size)
+              min={MIN_COLS}
+              max={MAX_COLS}
               step={1}
-              value={[gridCols]}
-              onValueChange={(value) => setGridCols(value[0])}
+              value={[sliderValue]}
+              onValueChange={handleSliderChange}
               className="w-full"
             />
           </div>
