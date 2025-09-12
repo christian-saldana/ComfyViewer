@@ -3,8 +3,7 @@
 import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Info } from "lucide-react";
-import extract from "png-chunks-extract";
-import { decode } from "png-chunk-text";
+import { getMetadata } from "meta-png";
 import {
   Accordion,
   AccordionContent,
@@ -27,11 +26,6 @@ interface ComfyMetadata {
   sampler: string;
   scheduler: string;
   fullWorkflow: object;
-}
-
-interface DecodedTextChunk {
-  keyword: string;
-  text: string;
 }
 
 // A simple component to display a metadata item
@@ -74,22 +68,15 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
       setIsLoading(true);
       try {
         const buffer = await image.arrayBuffer();
-        const chunks = extract(new Uint8Array(buffer));
+        const pngBytes = new Uint8Array(buffer);
+        const promptText = getMetadata(pngBytes, "prompt");
 
-        const textChunks: DecodedTextChunk[] = chunks
-          .filter((chunk: any) => chunk.name === "tEXt")
-          .map((chunk: any) => decode(chunk.data));
-
-        const promptChunk = textChunks.find(
-          (chunk) => chunk.keyword === "prompt"
-        );
-
-        if (!promptChunk || !promptChunk.text) {
+        if (!promptText) {
           setError("No ComfyUI workflow found in this PNG.");
           return;
         }
 
-        const workflow = JSON.parse(promptChunk.text);
+        const workflow = JSON.parse(promptText);
 
         const ksamplerNodeEntry = Object.entries(workflow).find(
           ([, node]: [string, any]) =>
