@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Info } from "lucide-react";
-import pngText from "png-chunk-text";
+import * as pngText from "png-chunk-text";
 import {
   Accordion,
   AccordionContent,
