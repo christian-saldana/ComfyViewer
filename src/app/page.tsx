@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Folder, Image as ImageIcon, Info } from "lucide-react";
+import { Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
@@ -10,9 +10,15 @@ import {
 } from "@/components/ui/resizable";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
+import { FileTree } from "@/components/file-tree";
+import { buildFileTree, FileTreeNode } from "@/lib/file-tree";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Home() {
-  const [files, setFiles] = React.useState<File[]>([]);
+  const [allFiles, setAllFiles] = React.useState<File[]>([]);
+  const [filteredFiles, setFilteredFiles] = React.useState<File[]>([]);
+  const [fileTree, setFileTree] = React.useState<FileTreeNode | null>(null);
+  const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -22,9 +28,29 @@ export default function Home() {
       const imageFiles = selectedFiles.filter((file) =>
         file.type.startsWith("image/")
       );
-      setFiles(imageFiles);
-      setSelectedImage(null); // Reset selected image when new folder is chosen
+      setAllFiles(imageFiles);
+
+      const tree = buildFileTree(imageFiles);
+      setFileTree(tree);
+
+      if (tree) {
+        setSelectedPath(tree.path);
+        setFilteredFiles(imageFiles);
+      } else {
+        setSelectedPath("");
+        setFilteredFiles([]);
+      }
+      setSelectedImage(null);
     }
+  };
+
+  const handleFolderSelect = (path: string) => {
+    setSelectedPath(path);
+    const newFilteredFiles = allFiles.filter((file) =>
+      file.webkitRelativePath.startsWith(`${path}/`) || file.webkitRelativePath === path
+    );
+    setFilteredFiles(newFilteredFiles);
+    setSelectedImage(null);
   };
 
   const handleFolderSelectClick = () => {
@@ -51,9 +77,25 @@ export default function Home() {
       </header>
 
       <ResizablePanelGroup direction="horizontal" className="w-full">
-        <ResizablePanel defaultSize={75}>
+        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+          <ScrollArea className="h-full">
+            {fileTree ? (
+              <FileTree
+                tree={fileTree}
+                selectedPath={selectedPath}
+                onSelectPath={handleFolderSelect}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
+                Select a folder to view its structure.
+              </div>
+            )}
+          </ScrollArea>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={55}>
           <ImageGallery
-            files={files}
+            files={filteredFiles}
             selectedImage={selectedImage}
             onSelectImage={setSelectedImage}
           />
