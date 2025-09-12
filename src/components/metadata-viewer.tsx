@@ -3,7 +3,8 @@
 import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Info } from "lucide-react";
-import * as pngText from "png-chunk-text";
+import extract from "png-chunks-extract";
+import { decode } from "png-chunk-text";
 import {
   Accordion,
   AccordionContent,
@@ -73,11 +74,11 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
       setIsLoading(true);
       try {
         const buffer = await image.arrayBuffer();
-        const chunks = pngText.extract(new Uint8Array(buffer));
+        const chunks = extract(new Uint8Array(buffer));
 
         const textChunks: DecodedTextChunk[] = chunks
           .filter((chunk: any) => chunk.name === "tEXt")
-          .map((chunk: any) => pngText.decode(chunk.data));
+          .map((chunk: any) => decode(chunk.data));
 
         const promptChunk = textChunks.find(
           (chunk) => chunk.keyword === "prompt"
