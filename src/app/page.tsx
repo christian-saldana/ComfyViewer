@@ -7,6 +7,8 @@ import {
   PanelRightClose,
   PanelLeftOpen,
   PanelRightOpen,
+  ArrowUpNarrowWide,
+  ArrowDownWideNarrow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +32,16 @@ import {
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type SortBy = "lastModified" | "size";
+type SortOrder = "asc" | "desc";
 
 export default function Home() {
   const [allFiles, setAllFiles] = React.useState<File[]>([]);
@@ -39,6 +51,9 @@ export default function Home() {
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
   const [gridCols, setGridCols] = React.useState(4);
+  const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
   const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
@@ -51,18 +66,12 @@ export default function Home() {
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
-  // The slider's value is inverted from the number of columns.
-  // A high slider value means few columns (large images).
-  // A low slider value means many columns (small images).
   const handleSliderChange = (value: number[]) => {
-    // The slider now controls "size", from 1 (small) to 12 (large).
-    // We convert this to columns, from 12 (small) to 1 (large).
-    const newGridCols = (MAX_COLS + MIN_COLS) - value[0];
+    const newGridCols = MAX_COLS + MIN_COLS - value[0];
     setGridCols(newGridCols);
   };
 
-  // We also need to provide the inverted value back to the slider.
-  const sliderValue = (MAX_COLS + MIN_COLS) - gridCols;
+  const sliderValue = MAX_COLS + MIN_COLS - gridCols;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -112,7 +121,7 @@ export default function Home() {
       return;
     }
 
-    const newFilteredFiles = allFiles.filter((file) => {
+    let newFilteredFiles = allFiles.filter((file) => {
       if (viewSubfolders) {
         return file.webkitRelativePath.startsWith(selectedPath);
       } else {
@@ -124,9 +133,21 @@ export default function Home() {
       }
     });
 
+    // Apply sorting
+    newFilteredFiles.sort((a, b) => {
+      let compareValue = 0;
+      if (sortBy === "lastModified") {
+        compareValue = a.lastModified - b.lastModified;
+      } else if (sortBy === "size") {
+        compareValue = a.size - b.size;
+      }
+
+      return sortOrder === "asc" ? compareValue : -compareValue;
+    });
+
     setFilteredFiles(newFilteredFiles);
     setSelectedImage(null);
-  }, [allFiles, selectedPath, viewSubfolders]);
+  }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder]);
 
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
@@ -158,6 +179,36 @@ export default function Home() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          <div className="flex items-center gap-2">
+            <Label htmlFor="sort-by" className="whitespace-nowrap">
+              Sort By:
+            </Label>
+            <Select
+              value={sortBy}
+              onValueChange={(value: SortBy) => setSortBy(value)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Sort By" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="lastModified">Last Modified</SelectItem>
+                <SelectItem value="size">File Size</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            >
+              {sortOrder === "asc" ? (
+                <ArrowUpNarrowWide className="h-4 w-4" />
+              ) : (
+                <ArrowDownWideNarrow className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
           <div className="flex w-48 items-center gap-2">
             <Label htmlFor="grid-slider" className="whitespace-nowrap">
               Image Size
