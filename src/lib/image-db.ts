@@ -86,38 +86,46 @@ async function getDb() {
 
 export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
   const db = await getDb();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
+  await db.clear(STORE_NAME); // Clear once at the beginning.
 
-  await store.clear();
-
-  let processedCount = 0;
+  const CHUNK_SIZE = 50; // Process 50 files at a time.
+  let overallProcessedCount = 0;
   const totalFiles = files.length;
 
-  for (const file of files) {
-    const [thumbnail, buffer] = await Promise.all([
-      generateThumbnail(file),
-      file.arrayBuffer(),
+  for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
+    const chunk = files.slice(i, i + CHUNK_SIZE);
+    
+    // 1. Prepare data for the chunk in parallel
+    const storableFilesChunk = await Promise.all(chunk.map(async (file) => {
+      const [thumbnail, buffer] = await Promise.all([
+        generateThumbnail(file),
+        file.arrayBuffer(),
+      ]);
+      
+      // Update progress as each file in the chunk is prepared
+      overallProcessedCount++;
+      if (onProgress) {
+        onProgress((overallProcessedCount / totalFiles) * 100);
+      }
+
+      return {
+        name: file.name,
+        type: file.type,
+        lastModified: file.lastModified,
+        webkitRelativePath: file.webkitRelativePath,
+        buffer,
+        thumbnail,
+      };
+    }));
+
+    // 2. Write the prepared chunk in a single transaction
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    // This pattern ensures all `put` requests are fired off, then waits for the transaction to complete.
+    await Promise.all([
+      ...storableFilesChunk.map(sf => tx.store.put(sf)),
+      tx.done,
     ]);
-
-    const storableFile: StorableFile = {
-      name: file.name,
-      type: file.type,
-      lastModified: file.lastModified,
-      webkitRelativePath: file.webkitRelativePath,
-      buffer,
-      thumbnail,
-    };
-
-    await store.put(storableFile);
-
-    processedCount++;
-    if (onProgress) {
-      onProgress((processedCount / totalFiles) * 100);
-    }
   }
-
-  await tx.done;
 }
 
 export async function getStoredImages(): Promise<StoredImage[]> {
