@@ -8,8 +8,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
 
@@ -34,7 +32,7 @@ export default function Home() {
   };
 
   return (
-    <div className="grid h-full grid-rows-[auto_1fr_auto]">
+    <div className="grid h-full grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b p-4">
         <h1 className="text-xl font-bold">Image Viewer</h1>
         <Button onClick={handleFolderSelectClick}>
@@ -65,7 +63,6 @@ export default function Home() {
           <MetadataViewer image={selectedImage} />
         </ResizablePanel>
       </ResizablePanelGroup>
-      <MadeWithDyad />
     </div>
   );
 }
