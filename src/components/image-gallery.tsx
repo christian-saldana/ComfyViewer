@@ -5,12 +5,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { ImageViewerDialog } from "./image-viewer-dialog";
+import { StoredImage } from "@/lib/image-db";
+import { GalleryPagination } from "./gallery-pagination";
 
 interface ImageGalleryProps {
-  files: File[];
+  files: StoredImage[];
   selectedImage: File | null;
   onSelectImage: (file: File) => void;
   gridCols: number;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  itemsPerPage: number;
+  onItemsPerPageChange: (value: number) => void;
+  itemsPerPageOptions: number[];
 }
 
 export function ImageGallery({
@@ -18,66 +26,68 @@ export function ImageGallery({
   selectedImage,
   onSelectImage,
   gridCols,
+  currentPage,
+  totalPages,
+  onPageChange,
+  itemsPerPage,
+  onItemsPerPageChange,
+  itemsPerPageOptions,
 }: ImageGalleryProps) {
-  const [imageSrcs, setImageSrcs] = React.useState<Map<string, string>>(new Map());
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    const newImageSrcs = new Map<string, string>();
-    const objectUrlsToRevoke: string[] = [];
-
-    files.forEach((file) => {
-      // The File object from local storage won't have a dataURL property.
-      // We create an object URL for all files to display them.
-      const url = URL.createObjectURL(file);
-      newImageSrcs.set(file.name, url);
-      objectUrlsToRevoke.push(url);
-    });
-
-    setImageSrcs(newImageSrcs);
-
-    // Cleanup object URLs on unmount or when files change
-    return () => {
-      objectUrlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [files]);
-
   const handleDoubleClick = (file: File) => {
-    const src = imageSrcs.get(file.name);
-    if (src) {
-      setFullscreenImageSrc(src);
-      setIsViewerOpen(true);
-    }
+    const objectUrl = URL.createObjectURL(file);
+    setFullscreenImageSrc(objectUrl);
+    setIsViewerOpen(true);
   };
+
+  React.useEffect(() => {
+    if (!isViewerOpen && fullscreenImageSrc) {
+      URL.revokeObjectURL(fullscreenImageSrc);
+      setFullscreenImageSrc(null);
+    }
+  }, [isViewerOpen, fullscreenImageSrc]);
 
   if (files.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
         <ImageIcon className="h-16 w-16" />
-        <h2 className="mt-4 text-lg font-semibold">No Images Selected</h2>
+        <h2 className="mt-4 text-lg font-semibold">No Images to Display</h2>
         <p className="mt-1 text-sm">
-          Click the &quot;Select Folder&quot; button to get started.
+          Select a folder with images or adjust your filters.
         </p>
       </div>
     );
   }
 
   const isSingleColumn = gridCols === 1;
+  const showPagination = totalPages > 1;
 
   return (
-    <>
-      <ScrollArea className="h-full">
+    <div className="flex h-full flex-col">
+      {showPagination && (
+        <GalleryPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={onItemsPerPageChange}
+          itemsPerPageOptions={itemsPerPageOptions}
+        />
+      )}
+      <ScrollArea className="flex-grow">
         <div
           className="grid gap-4 p-4"
           style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
         >
-          {files.map((file) => (
+          {files.map(({ file, thumbnail }) => (
             <div
-              key={file.name}
+              key={file.name + file.webkitRelativePath}
               className={cn(
                 "relative cursor-pointer overflow-hidden border-2",
-                selectedImage?.name === file.name
+                selectedImage?.name === file.name &&
+                  selectedImage.webkitRelativePath === file.webkitRelativePath
                   ? "border-primary"
                   : "border-transparent",
                 !isSingleColumn && "aspect-square"
@@ -86,7 +96,7 @@ export function ImageGallery({
               onDoubleClick={() => handleDoubleClick(file)}
             >
               <img
-                src={imageSrcs.get(file.name)}
+                src={thumbnail}
                 alt={file.name}
                 className={cn(
                   "h-full w-full",
@@ -101,14 +111,24 @@ export function ImageGallery({
             </div>
           ))}
         </div>
-      </ScrollArea>
 
+      </ScrollArea>
+      {showPagination && (
+        <GalleryPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={onItemsPerPageChange}
+          itemsPerPageOptions={itemsPerPageOptions}
+        />
+      )}
       <ImageViewerDialog
         src={fullscreenImageSrc}
         alt={selectedImage?.name || "Fullscreen Image"}
         open={isViewerOpen}
         onOpenChange={setIsViewerOpen}
       />
-    </>
+    </div>
   );
 }

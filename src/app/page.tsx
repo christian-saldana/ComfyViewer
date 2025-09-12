@@ -40,19 +40,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { storeImages, getStoredImages, clearImages } from "@/lib/image-db";
+import { storeImages, getStoredImages, clearImages, StoredImage } from "@/lib/image-db";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
+const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96];
+
 export default function Home() {
-  const [allFiles, setAllFiles] = React.useState<File[]>([]);
+  const [allFiles, setAllFiles] = React.useState<StoredImage[]>([]);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
   const [gridCols, setGridCols] = React.useState(4);
   const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
@@ -64,7 +68,6 @@ export default function Home() {
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
-  // Effect to load images from IndexedDB on initial component mount
   React.useEffect(() => {
     async function loadInitialImages() {
       const images = await getStoredImages();
@@ -75,15 +78,15 @@ export default function Home() {
     loadInitialImages();
   }, []);
 
-  // Memoize derived state to avoid re-computation
-  const fileTree = React.useMemo(() => buildFileTree(allFiles), [allFiles]);
+  const fileTree = React.useMemo(() => buildFileTree(allFiles.map(f => f.file)), [allFiles]);
 
   const filteredFiles = React.useMemo(() => {
     if (!selectedPath) {
       return [];
     }
 
-    let newFilteredFiles = allFiles.filter((file) => {
+    let newFilteredFiles = allFiles.filter((storedImage) => {
+      const file = storedImage.file;
       if (viewSubfolders) {
         return file.webkitRelativePath.startsWith(selectedPath);
       } else {
@@ -98,9 +101,9 @@ export default function Home() {
     newFilteredFiles.sort((a, b) => {
       let compareValue = 0;
       if (sortBy === "lastModified") {
-        compareValue = a.lastModified - b.lastModified;
+        compareValue = a.file.lastModified - b.file.lastModified;
       } else if (sortBy === "size") {
-        compareValue = a.size - b.size;
+        compareValue = a.file.size - b.file.size;
       }
       return sortOrder === "asc" ? compareValue : -compareValue;
     });
@@ -108,12 +111,22 @@ export default function Home() {
     return newFilteredFiles;
   }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder]);
 
-  // Effect to set initial selected path when file tree is ready
   React.useEffect(() => {
     if (fileTree && !selectedPath) {
       setSelectedPath(fileTree.path);
     }
   }, [fileTree, selectedPath]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
+  const paginatedFiles = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredFiles.slice(startIndex, endIndex);
+  }, [filteredFiles, currentPage, itemsPerPage]);
 
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
@@ -128,8 +141,10 @@ export default function Home() {
       const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
 
       await storeImages(imageFiles);
-      setAllFiles(imageFiles);
+      const storedImages = await getStoredImages();
+      setAllFiles(storedImages);
       setSelectedImage(null);
+      setCurrentPage(1);
       
       const newTree = buildFileTree(imageFiles);
       setSelectedPath(newTree ? newTree.path : "");
@@ -141,6 +156,7 @@ export default function Home() {
     setAllFiles([]);
     setSelectedPath("");
     setSelectedImage(null);
+    setCurrentPage(1);
   };
 
   const handleFolderSelect = (path: string) => {
@@ -332,10 +348,16 @@ export default function Home() {
         </ResizableHandle>
         <ResizablePanel defaultSize={55}>
           <ImageGallery
-            files={filteredFiles}
+            files={paginatedFiles}
             selectedImage={selectedImage}
             onSelectImage={setSelectedImage}
             gridCols={gridCols}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
           />
         </ResizablePanel>
         <ResizableHandle className="relative flex w-2 items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100">
