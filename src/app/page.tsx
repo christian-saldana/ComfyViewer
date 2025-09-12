@@ -9,6 +9,7 @@ import {
   PanelRightOpen,
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +40,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLocalStorage } from "@/hooks/use-local-storage"; // Import the hook
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
+
+// Define a storable image type
+interface StoredImage {
+  name: string;
+  type: string;
+  size: number;
+  lastModified: number;
+  dataURL: string;
+  webkitRelativePath: string;
+}
 
 export default function Home() {
   const [allFiles, setAllFiles] = React.useState<File[]>([]);
@@ -53,6 +65,12 @@ export default function Home() {
   const [gridCols, setGridCols] = React.useState(4);
   const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
+
+  // Use localStorage to persist images
+  const [storedImages, setStoredImages] = useLocalStorage<StoredImage[]>(
+    "imageViewerFiles",
+    []
+  );
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
@@ -66,6 +84,34 @@ export default function Home() {
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
+  // Load images from local storage on initial mount
+  React.useEffect(() => {
+    if (storedImages.length > 0) {
+      const loadedFiles = storedImages.map((stored) => {
+        const byteString = atob(stored.dataURL.split(",")[1]);
+        const mimeString = stored.dataURL.split(",")[0].split(":")[1].split(";")[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        const file = new File([ab], stored.name, { type: mimeString, lastModified: stored.lastModified });
+        // Manually assign webkitRelativePath as it's not part of File constructor
+        Object.defineProperty(file, 'webkitRelativePath', {
+          value: stored.webkitRelativePath,
+          writable: false
+        });
+        return file;
+      });
+      setAllFiles(loadedFiles);
+      const tree = buildFileTree(loadedFiles);
+      setFileTree(tree);
+      if (tree) {
+        setSelectedPath(tree.path);
+      }
+    }
+  }, []); // Run only once on mount
+
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
     setGridCols(newGridCols);
@@ -73,12 +119,34 @@ export default function Home() {
 
   const sliderValue = MAX_COLS + MIN_COLS - gridCols;
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (event.target.files) {
       const selectedFiles = Array.from(event.target.files);
       const imageFiles = selectedFiles.filter((file) =>
         file.type.startsWith("image/")
       );
+
+      const storableImages: StoredImage[] = await Promise.all(
+        imageFiles.map(async (file) => {
+          const dataURL = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+          return {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            lastModified: file.lastModified,
+            dataURL,
+            webkitRelativePath: file.webkitRelativePath,
+          };
+        })
+      );
+
+      setStoredImages(storableImages); // Save to local storage
       setAllFiles(imageFiles);
 
       const tree = buildFileTree(imageFiles);
@@ -91,6 +159,15 @@ export default function Home() {
       }
       setSelectedImage(null);
     }
+  };
+
+  const handleClearImages = () => {
+    setAllFiles([]);
+    setFilteredFiles([]);
+    setFileTree(null);
+    setSelectedPath("");
+    setSelectedImage(null);
+    setStoredImages([]); // Clear from local storage
   };
 
   const handleFolderSelect = (path: string) => {
@@ -232,6 +309,18 @@ export default function Home() {
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Select Folder</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button onClick={handleClearImages} size="icon" variant="outline">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Clear Images</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>

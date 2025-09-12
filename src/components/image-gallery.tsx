@@ -19,30 +19,40 @@ export function ImageGallery({
   onSelectImage,
   gridCols,
 }: ImageGalleryProps) {
-  const [imageUrls, setImageUrls] = React.useState<Map<string, string>>(
+  const [imageSrcs, setImageSrcs] = React.useState<Map<string, string>>(
     new Map()
   );
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
   React.useEffect(() => {
-    const newImageUrls = new Map<string, string>();
-    files.forEach((file) => {
-      const url = URL.createObjectURL(file);
-      newImageUrls.set(file.name, url);
-    });
-    setImageUrls(newImageUrls);
+    const newImageSrcs = new Map<string, string>();
+    const objectUrlsToRevoke: string[] = [];
 
-    // Cleanup object URLs on unmount
+    files.forEach((file) => {
+      // Check if the file is a "rehydrated" file from local storage (which will have a dataURL property)
+      // @ts-ignore - webkitRelativePath is not standard but used in this app
+      if (file.dataURL) {
+        // @ts-ignore
+        newImageSrcs.set(file.name, file.dataURL);
+      } else {
+        const url = URL.createObjectURL(file);
+        newImageSrcs.set(file.name, url);
+        objectUrlsToRevoke.push(url);
+      }
+    });
+    setImageSrcs(newImageSrcs);
+
+    // Cleanup object URLs on unmount or when files change
     return () => {
-      newImageUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [files]);
 
   const handleDoubleClick = (file: File) => {
-    const url = imageUrls.get(file.name);
-    if (url) {
-      setFullscreenImageSrc(url);
+    const src = imageSrcs.get(file.name);
+    if (src) {
+      setFullscreenImageSrc(src);
       setIsViewerOpen(true);
     }
   };
@@ -82,7 +92,7 @@ export function ImageGallery({
               onDoubleClick={() => handleDoubleClick(file)} // Add double-click handler
             >
               <img
-                src={imageUrls.get(file.name)}
+                src={imageSrcs.get(file.name)}
                 alt={file.name}
                 className={cn(
                   "h-full w-full",
