@@ -19,6 +19,7 @@ interface ImageGalleryProps {
   itemsPerPage: number;
   onItemsPerPageChange: (value: number) => void;
   itemsPerPageOptions: number[];
+  useFullRes: boolean;
 }
 
 export function ImageGallery({
@@ -32,9 +33,29 @@ export function ImageGallery({
   itemsPerPage,
   onItemsPerPageChange,
   itemsPerPageOptions,
+  useFullRes,
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
+  const objectUrls = React.useRef<string[]>([]);
+
+  React.useEffect(() => {
+    // Clean up previously created object URLs when the component unmounts
+    // or when the files/useFullRes props change.
+    const urlsToRevoke = objectUrls.current;
+    return () => {
+      urlsToRevoke.forEach(URL.revokeObjectURL);
+    };
+  }, [files, useFullRes]);
+
+  const getImageSrc = (file: File, thumbnail: string) => {
+    if (useFullRes) {
+      const url = URL.createObjectURL(file);
+      objectUrls.current.push(url); // Keep track for cleanup
+      return url;
+    }
+    return thumbnail;
+  };
 
   const handleDoubleClick = (file: File) => {
     const objectUrl = URL.createObjectURL(file);
@@ -64,6 +85,10 @@ export function ImageGallery({
   const isSingleColumn = gridCols === 1;
   const showPagination = totalPages > 1;
 
+  // Clear previous object URLs before rendering new ones
+  objectUrls.current.forEach(URL.revokeObjectURL);
+  objectUrls.current = [];
+
   return (
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-grow">
@@ -86,7 +111,7 @@ export function ImageGallery({
               onDoubleClick={() => handleDoubleClick(file)}
             >
               <img
-                src={thumbnail}
+                src={getImageSrc(file, thumbnail)}
                 alt={file.name}
                 className={cn(
                   "h-full w-full",

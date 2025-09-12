@@ -42,12 +42,14 @@ import {
 } from "@/components/ui/select";
 import { storeImages, getStoredImages, clearImages, StoredImage } from "@/lib/image-db";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
 const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96];
 const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
+const FULL_RES_KEY = "image-viewer-use-full-res";
 
 export default function Home() {
   const [allFiles, setAllFiles] = React.useState<StoredImage[]>([]);
@@ -72,6 +74,13 @@ export default function Home() {
       }
     }
     return ITEMS_PER_PAGE_OPTIONS[1];
+  });
+
+  const [useFullRes, setUseFullRes] = React.useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(FULL_RES_KEY) === "true";
+    }
+    return false;
   });
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -101,6 +110,12 @@ export default function Home() {
       localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage));
     }
   }, [itemsPerPage]);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(FULL_RES_KEY, String(useFullRes));
+    }
+  }, [useFullRes]);
 
   const fileTree = React.useMemo(() => buildFileTree(allFiles.map(f => f.file)), [allFiles]);
 
@@ -316,6 +331,7 @@ export default function Home() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  <Separator orientation="vertical" className="mx-1 h-6" />
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -328,16 +344,42 @@ export default function Home() {
                           />
                           <Label
                             htmlFor="view-subfolders"
-                            className="cursor-pointer whitespace-nowrap sr-only"
+                            className="cursor-pointer text-sm"
                           >
-                            Include Subfolders
+                            Subfolders
+                          </Label>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Show images from all subfolders.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="use-full-res"
+                            checked={useFullRes}
+                            onCheckedChange={setUseFullRes}
+                            disabled={isLoading}
+                          />
+                          <Label
+                            htmlFor="use-full-res"
+                            className="cursor-pointer text-sm"
+                          >
+                            Full Res
                           </Label>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
-                          When enabled, shows images from all subfolders of the
-                          selected folder.
+                          Display full resolution images in the gallery.
+                          <br />
+                          <span className="text-destructive">
+                            Warning: May cause performance issues.
+                          </span>
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -395,6 +437,7 @@ export default function Home() {
             itemsPerPage={itemsPerPage}
             onItemsPerPageChange={setItemsPerPage}
             itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
+            useFullRes={useFullRes}
           />
         </ResizablePanel>
         <ResizableHandle className="relative flex w-2 items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100">
