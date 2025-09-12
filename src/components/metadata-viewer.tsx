@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface MetadataViewerProps {
   image: File | null;
@@ -32,13 +33,15 @@ interface ComfyMetadata {
 const MetadataItem = ({
   label,
   value,
+  valueClassName,
 }: {
   label: string;
   value: React.ReactNode;
+  valueClassName?: string;
 }) => (
   <li>
     <p className="text-sm font-medium text-muted-foreground">{label}</p>
-    <p className="break-words text-sm">{value}</p>
+    <p className={cn("break-words text-sm", valueClassName)}>{value}</p>
   </li>
 );
 
@@ -203,19 +206,13 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                   <ul className="space-y-3">
                     <MetadataItem
                       label="Prompt"
-                      value={
-                        <p className="text-sm leading-relaxed">
-                          {comfyMetadata.prompt}
-                        </p>
-                      }
+                      value={comfyMetadata.prompt}
+                      valueClassName="leading-relaxed"
                     />
                     <MetadataItem
                       label="Negative Prompt"
-                      value={
-                        <p className="text-sm leading-relaxed">
-                          {comfyMetadata.negativePrompt}
-                        </p>
-                      }
+                      value={comfyMetadata.negativePrompt}
+                      valueClassName="leading-relaxed"
                     />
                     <MetadataItem label="Seed" value={comfyMetadata.seed} />
                     <MetadataItem
