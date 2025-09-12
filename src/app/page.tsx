@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/resizable";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
-import { FileTree } from "@/components/file-tree";
+import { FileTree } from "@/lib/file-tree";
 import { buildFileTree, FileTreeNode } from "@/lib/file-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ThemeToggle } from "@/components/theme-toggle"; // Import ThemeToggle
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
@@ -196,6 +197,7 @@ export default function Home() {
               )}
             </Button>
           </div>
+          <ThemeToggle /> {/* Add the ThemeToggle component here */}
         </div>
         <input
           type="file"
