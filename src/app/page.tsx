@@ -63,25 +63,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
   
-  const [itemsPerPage, setItemsPerPage] = React.useState(() => {
-    if (typeof window !== "undefined") {
-      const storedValue = localStorage.getItem(ITEMS_PER_PAGE_KEY);
-      if (storedValue) {
-        const parsedValue = parseInt(storedValue, 10);
-        if (ITEMS_PER_PAGE_OPTIONS.includes(parsedValue)) {
-          return parsedValue;
-        }
-      }
-    }
-    return ITEMS_PER_PAGE_OPTIONS[1];
-  });
-
-  const [useFullRes, setUseFullRes] = React.useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem(FULL_RES_KEY) === "true";
-    }
-    return false;
-  });
+  const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
+  const [useFullRes, setUseFullRes] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
@@ -93,6 +76,7 @@ export default function Home() {
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
+  // Load initial images from IndexedDB
   React.useEffect(() => {
     async function loadInitialImages() {
       setIsLoading(true);
@@ -105,16 +89,29 @@ export default function Home() {
     loadInitialImages();
   }, []);
 
+  // Load persisted settings from localStorage on mount
   React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage));
+    const storedItemsPerPage = localStorage.getItem(ITEMS_PER_PAGE_KEY);
+    if (storedItemsPerPage) {
+      const parsedValue = parseInt(storedItemsPerPage, 10);
+      if (ITEMS_PER_PAGE_OPTIONS.includes(parsedValue)) {
+        setItemsPerPage(parsedValue);
+      }
     }
+
+    const storedUseFullRes = localStorage.getItem(FULL_RES_KEY);
+    if (storedUseFullRes) {
+      setUseFullRes(storedUseFullRes === "true");
+    }
+  }, []);
+
+  // Save settings to localStorage when they change
+  React.useEffect(() => {
+    localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage));
   }, [itemsPerPage]);
 
   React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(FULL_RES_KEY, String(useFullRes));
-    }
+    localStorage.setItem(FULL_RES_KEY, String(useFullRes));
   }, [useFullRes]);
 
   const fileTree = React.useMemo(() => buildFileTree(allFiles.map(f => f.file)), [allFiles]);
