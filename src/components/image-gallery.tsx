@@ -60,7 +60,7 @@ export function ImageGallery({
           <div
             key={file.name}
             className={cn(
-              "relative cursor-pointer overflow-hidden rounded-lg border-2",
+              "relative cursor-pointer overflow-hidden border-2",
               selectedImage?.name === file.name
                 ? "border-primary"
                 : "border-transparent",
