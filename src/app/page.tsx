@@ -192,9 +192,8 @@ export default function Home() {
         <ResizablePanel
           ref={leftPanelRef}
           defaultSize={20}
-          minSize={15}
+          minSize={10} // Adjusted minSize
           collapsible
-          collapsedSize={4}
           onCollapse={() => setIsLeftPanelCollapsed(true)}
           onExpand={() => setIsLeftPanelCollapsed(false)}
         >
@@ -276,9 +275,8 @@ export default function Home() {
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={25}
-          minSize={15}
+          minSize={10} // Adjusted minSize
           collapsible
-          collapsedSize={4}
           onCollapse={() => setIsRightPanelCollapsed(true)}
           onExpand={() => setIsRightPanelCollapsed(false)}
         >
