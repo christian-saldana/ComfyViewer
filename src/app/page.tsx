@@ -9,6 +9,7 @@ import {
   PanelRightOpen,
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
+  RefreshCw, // Import the Refresh icon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +92,10 @@ export default function Home() {
       }
       setSelectedImage(null);
     }
+    // Clear the input value to allow re-selecting the same folder
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleFolderSelect = (path: string) => {
@@ -98,6 +103,11 @@ export default function Home() {
   };
 
   const handleFolderSelectClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRefreshClick = () => {
+    // Trigger the file input click to re-select the folder
     fileInputRef.current?.click();
   };
 
@@ -196,6 +206,18 @@ export default function Home() {
               )}
             </Button>
           </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleRefreshClick} size="icon" variant="outline">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refresh Folder</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <input
           type="file"
