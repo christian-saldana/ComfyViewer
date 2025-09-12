@@ -7,6 +7,7 @@ import { ImageIcon } from "lucide-react";
 import { ImageViewerDialog } from "./image-viewer-dialog";
 import { StoredImage } from "@/lib/image-db";
 import { GalleryPagination } from "./gallery-pagination";
+import { LazyImage } from "./lazy-image";
 
 interface ImageGalleryProps {
   files: StoredImage[];
@@ -19,7 +20,6 @@ interface ImageGalleryProps {
   itemsPerPage: number;
   onItemsPerPageChange: (value: number) => void;
   itemsPerPageOptions: number[];
-  useFullRes: boolean;
 }
 
 export function ImageGallery({
@@ -33,30 +33,9 @@ export function ImageGallery({
   itemsPerPage,
   onItemsPerPageChange,
   itemsPerPageOptions,
-  useFullRes,
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
-  const objectUrls = React.useRef<string[]>([]);
-
-  React.useEffect(() => {
-    // Clean up previously created object URLs when the component unmounts
-    // or when the files/useFullRes props change.
-    const urlsToRevoke = objectUrls.current;
-    return () => {
-      urlsToRevoke.forEach(URL.revokeObjectURL);
-    };
-  }, [files, useFullRes]);
-
-  const getImageSrc = (file: File, thumbnail: string) => {
-    // If useFullRes is on, or if there's no thumbnail, use the full file.
-    if (useFullRes || !thumbnail) {
-      const url = URL.createObjectURL(file);
-      objectUrls.current.push(url); // Keep track for cleanup
-      return url;
-    }
-    return thumbnail;
-  };
 
   const handleDoubleClick = (file: File) => {
     const objectUrl = URL.createObjectURL(file);
@@ -86,10 +65,6 @@ export function ImageGallery({
   const isSingleColumn = gridCols === 1;
   const showPagination = totalPages > 1;
 
-  // Clear previous object URLs before rendering new ones
-  objectUrls.current.forEach(URL.revokeObjectURL);
-  objectUrls.current = [];
-
   return (
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-grow">
@@ -97,7 +72,7 @@ export function ImageGallery({
           className="grid gap-4 p-4"
           style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
         >
-          {files.map(({ file, thumbnail }) => (
+          {files.map(({ file }) => (
             <div
               key={file.name + file.webkitRelativePath}
               className={cn(
@@ -111,8 +86,8 @@ export function ImageGallery({
               onClick={() => onSelectImage(file)}
               onDoubleClick={() => handleDoubleClick(file)}
             >
-              <img
-                src={getImageSrc(file, thumbnail)}
+              <LazyImage
+                file={file}
                 alt={file.name}
                 className={cn(
                   "h-full w-full",
