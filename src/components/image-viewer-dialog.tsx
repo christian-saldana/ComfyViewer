@@ -19,7 +19,7 @@ export function ImageViewerDialog({
 }: ImageViewerDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-full w-full max-w-full items-center justify-center p-0">
+      <DialogContent className="flex max-h-[90vh] max-w-[90vw] items-center justify-center p-0">
         {src && (
           <img
             src={src}
