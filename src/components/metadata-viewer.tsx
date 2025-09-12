@@ -76,7 +76,17 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
           return;
         }
 
-        const workflow = JSON.parse(promptText);
+        // Find the start and end of the JSON object to clean up any extra characters
+        const jsonStart = promptText.indexOf("{");
+        const jsonEnd = promptText.lastIndexOf("}");
+
+        if (jsonStart === -1 || jsonEnd === -1) {
+          setError("Could not find a valid JSON workflow in the metadata.");
+          return;
+        }
+
+        const jsonString = promptText.substring(jsonStart, jsonEnd + 1);
+        const workflow = JSON.parse(jsonString);
 
         const ksamplerNodeEntry = Object.entries(workflow).find(
           ([, node]: [string, any]) =>
