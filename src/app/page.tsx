@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Folder, PanelLeftClose, PanelRightClose } from "lucide-react";
+import {
+  Folder,
+  PanelLeftClose,
+  PanelRightClose,
+  PanelLeftOpen,
+  PanelRightOpen,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
@@ -23,6 +29,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const [allFiles, setAllFiles] = React.useState<File[]>([]);
@@ -35,6 +42,11 @@ export default function Home() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
   const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
+
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] =
+    React.useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] =
+    React.useState(false);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -86,10 +98,8 @@ export default function Home() {
 
     const newFilteredFiles = allFiles.filter((file) => {
       if (viewSubfolders) {
-        // Show images in selected folder and all subfolders
         return file.webkitRelativePath.startsWith(selectedPath);
       } else {
-        // Show images only in the selected folder
         const parentDirectory = file.webkitRelativePath.substring(
           0,
           file.webkitRelativePath.lastIndexOf("/")
@@ -99,7 +109,7 @@ export default function Home() {
     });
 
     setFilteredFiles(newFilteredFiles);
-    setSelectedImage(null); // Reset selected image when filter changes
+    setSelectedImage(null);
   }, [allFiles, selectedPath, viewSubfolders]);
 
   return (
@@ -167,44 +177,71 @@ export default function Home() {
           ref={leftPanelRef}
           defaultSize={20}
           minSize={15}
-          maxSize={30}
           collapsible
+          collapsedSize={4}
+          onCollapse={() => setIsLeftPanelCollapsed(true)}
+          onExpand={() => setIsLeftPanelCollapsed(false)}
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            isLeftPanelCollapsed && "min-w-[56px]"
+          )}
         >
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b p-4">
-              <h2 className="text-lg font-semibold">Folders</h2>
+          {isLeftPanelCollapsed ? (
+            <div className="flex h-full items-center justify-center p-2">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
                       onClick={toggleLeftPanel}
                     >
-                      <PanelLeftClose className="h-4 w-4" />
+                      <PanelRightOpen className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Collapse Sidebar</p>
+                  <TooltipContent side="right">
+                    <p>Expand</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <ScrollArea className="flex-1">
-              {fileTree ? (
-                <FileTree
-                  tree={fileTree}
-                  selectedPath={selectedPath}
-                  onSelectPath={handleFolderSelect}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
-                  Select a folder to view its structure.
-                </div>
-              )}
-            </ScrollArea>
-          </div>
+          ) : (
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between border-b p-4">
+                <h2 className="text-lg font-semibold">Folders</h2>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={toggleLeftPanel}
+                      >
+                        <PanelLeftClose className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>Collapse</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <ScrollArea className="flex-1">
+                {fileTree ? (
+                  <FileTree
+                    tree={fileTree}
+                    selectedPath={selectedPath}
+                    onSelectPath={handleFolderSelect}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
+                    Select a folder to view its structure.
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          )}
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={55}>
@@ -219,11 +256,41 @@ export default function Home() {
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={25}
-          minSize={20}
-          maxSize={40}
+          minSize={15}
           collapsible
+          collapsedSize={4}
+          onCollapse={() => setIsRightPanelCollapsed(true)}
+          onExpand={() => setIsRightPanelCollapsed(false)}
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            isRightPanelCollapsed && "min-w-[56px]"
+          )}
         >
-          <MetadataViewer image={selectedImage} onCollapse={toggleRightPanel} />
+          {isRightPanelCollapsed ? (
+            <div className="flex h-full items-center justify-center p-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggleRightPanel}
+                    >
+                      <PanelLeftOpen className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    <p>Expand</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          ) : (
+            <MetadataViewer
+              image={selectedImage}
+              onCollapse={toggleRightPanel}
+            />
+          )}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
