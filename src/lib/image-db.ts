@@ -4,7 +4,7 @@ import { openDB, DBSchema } from 'idb';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 3; // Bump version for schema change
+const DB_VERSION = 3; // Version is correct from last change
 
 // This interface defines the shape of the object we'll store in IndexedDB.
 interface StorableFile {
@@ -25,7 +25,6 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      // If the user has an old version, we'll create a new object store.
       if (oldVersion < 3) {
         if (db.objectStoreNames.contains(STORE_NAME)) {
           db.deleteObjectStore(STORE_NAME);
@@ -37,26 +36,27 @@ async function getDb() {
 }
 
 export async function storeImages(files: File[]) {
-  const db = await getDb();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  
-  await tx.store.clear();
-
-  // Convert each File object into a plain, storable object.
+  // First, prepare all the data outside of the transaction.
   const storableFiles: StorableFile[] = await Promise.all(
     files.map(async (file) => ({
       name: file.name,
       type: file.type,
       lastModified: file.lastModified,
       webkitRelativePath: file.webkitRelativePath,
-      buffer: await file.arrayBuffer(), // Extract the binary data
+      buffer: await file.arrayBuffer(),
     }))
   );
 
-  // Store the plain objects.
-  await Promise.all(storableFiles.map(sf => tx.store.put(sf)));
-  
-  await tx.done;
+  const db = await getDb();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+
+  // Now, perform all operations within the same transaction without awaiting them individually.
+  // We use Promise.all to wait for all operations to complete together.
+  await Promise.all([
+    tx.store.clear(),
+    ...storableFiles.map(sf => tx.store.put(sf)),
+    tx.done, // This special promise resolves when the transaction is complete.
+  ]);
 }
 
 export async function getStoredImages(): Promise<File[]> {
