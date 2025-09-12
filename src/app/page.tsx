@@ -35,6 +35,7 @@ export default function Home() {
 
       if (tree) {
         setSelectedPath(tree.path);
+        // Initially, show all images from the root folder and its subfolders
         setFilteredFiles(imageFiles);
       } else {
         setSelectedPath("");
@@ -46,9 +47,14 @@ export default function Home() {
 
   const handleFolderSelect = (path: string) => {
     setSelectedPath(path);
-    const newFilteredFiles = allFiles.filter((file) =>
-      file.webkitRelativePath.startsWith(`${path}/`) || file.webkitRelativePath === path
-    );
+    const newFilteredFiles = allFiles.filter((file) => {
+      // A file is in the selected folder if its parent directory path is exactly the selected path.
+      const parentDirectory = file.webkitRelativePath.substring(
+        0,
+        file.webkitRelativePath.lastIndexOf("/")
+      );
+      return parentDirectory === path;
+    });
     setFilteredFiles(newFilteredFiles);
     setSelectedImage(null);
   };
@@ -56,6 +62,14 @@ export default function Home() {
   const handleFolderSelectClick = () => {
     fileInputRef.current?.click();
   };
+
+  // When the file tree is first built, select the root and show only its direct images
+  React.useEffect(() => {
+    if (fileTree) {
+      handleFolderSelect(fileTree.path);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileTree]);
 
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
