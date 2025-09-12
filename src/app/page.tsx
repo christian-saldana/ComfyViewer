@@ -219,14 +219,14 @@ export default function Home() {
             </div>
           )}
         </ResizablePanel>
-        <ResizableHandle className="relative">
+        <ResizableHandle className="relative flex w-2 items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-1/2 top-16 z-10 h-7 w-7 -translate-x-1/2 -translate-y-1/2"
+                  className="absolute left-1/2 top-1/2 z-10 h-7 w-7 -translate-x-1/2 -translate-y-1/2"
                   onClick={toggleLeftPanel}
                 >
                   {isLeftPanelCollapsed ? (
@@ -250,14 +250,14 @@ export default function Home() {
             gridCols={gridCols}
           />
         </ResizablePanel>
-        <ResizableHandle className="relative">
+        <ResizableHandle className="relative flex w-2 items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-1/2 top-16 z-10 h-7 w-7 -translate-x-1/2 -translate-y-1/2"
+                  className="absolute left-1/2 top-1/2 z-10 h-7 w-7 -translate-x-1/2 -translate-y-1/2"
                   onClick={toggleRightPanel}
                 >
                   {isRightPanelCollapsed ? (
