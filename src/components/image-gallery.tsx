@@ -49,7 +49,8 @@ export function ImageGallery({
   }, [files, useFullRes]);
 
   const getImageSrc = (file: File, thumbnail: string) => {
-    if (useFullRes) {
+    // If useFullRes is on, or if there's no thumbnail, use the full file.
+    if (useFullRes || !thumbnail) {
       const url = URL.createObjectURL(file);
       objectUrls.current.push(url); // Keep track for cleanup
       return url;

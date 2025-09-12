@@ -4,49 +4,7 @@ import { openDB, DBSchema } from 'idb';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 4; // Version is correct from last change
-
-const THUMBNAIL_MAX_WIDTH = 256;
-const THUMBNAIL_MAX_HEIGHT = 256;
-
-// Helper function to generate a thumbnail from a File object
-async function generateThumbnail(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          return reject(new Error('Could not get canvas context'));
-        }
-
-        let { width, height } = img;
-        if (width > height) {
-          if (width > THUMBNAIL_MAX_WIDTH) {
-            height *= THUMBNAIL_MAX_WIDTH / width;
-            width = THUMBNAIL_MAX_WIDTH;
-          }
-        } else {
-          if (height > THUMBNAIL_MAX_HEIGHT) {
-            width *= THUMBNAIL_MAX_HEIGHT / height;
-            height = THUMBNAIL_MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.8)); // Use JPEG for smaller size
-      };
-      img.onerror = reject;
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+const DB_VERSION = 4;
 
 // This interface defines the shape of the object we'll store in IndexedDB.
 interface StorableFile {
@@ -55,7 +13,7 @@ interface StorableFile {
   lastModified: number;
   webkitRelativePath: string;
   buffer: ArrayBuffer;
-  thumbnail: string; // Added thumbnail as a data URL
+  thumbnail: string; // Will be an empty string
 }
 
 // This is the object we'll work with in the application
@@ -88,21 +46,18 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
   const db = await getDb();
   await db.clear(STORE_NAME); // Clear once at the beginning.
 
-  const CHUNK_SIZE = 50; // Process 50 files at a time.
+  const CHUNK_SIZE = 100; // Process files in chunks to avoid transaction issues
   let overallProcessedCount = 0;
   const totalFiles = files.length;
 
   for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
     const chunk = files.slice(i, i + CHUNK_SIZE);
     
-    // 1. Prepare data for the chunk in parallel
+    // 1. Prepare data for the chunk in parallel (just getting the buffer)
     const storableFilesChunk = await Promise.all(chunk.map(async (file) => {
-      const [thumbnail, buffer] = await Promise.all([
-        generateThumbnail(file),
-        file.arrayBuffer(),
-      ]);
+      const buffer = await file.arrayBuffer();
       
-      // Update progress as each file in the chunk is prepared
+      // Update progress
       overallProcessedCount++;
       if (onProgress) {
         onProgress((overallProcessedCount / totalFiles) * 100);
@@ -114,13 +69,12 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
         lastModified: file.lastModified,
         webkitRelativePath: file.webkitRelativePath,
         buffer,
-        thumbnail,
+        thumbnail: '', // No thumbnail is generated
       };
     }));
 
     // 2. Write the prepared chunk in a single transaction
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    // This pattern ensures all `put` requests are fired off, then waits for the transaction to complete.
     await Promise.all([
       ...storableFilesChunk.map(sf => tx.store.put(sf)),
       tx.done,
