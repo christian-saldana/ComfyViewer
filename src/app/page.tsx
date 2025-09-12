@@ -181,51 +181,11 @@ export default function Home() {
           collapsedSize={4}
           onCollapse={() => setIsLeftPanelCollapsed(true)}
           onExpand={() => setIsLeftPanelCollapsed(false)}
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            isLeftPanelCollapsed && "min-w-[56px]"
-          )}
         >
-          {isLeftPanelCollapsed ? (
-            <div className="flex h-full items-center justify-center p-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggleLeftPanel}
-                    >
-                      <PanelRightOpen className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>Expand</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          ) : (
+          {!isLeftPanelCollapsed && (
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b p-4">
                 <h2 className="text-lg font-semibold">Folders</h2>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={toggleLeftPanel}
-                      >
-                        <PanelLeftClose className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>Collapse</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               </div>
               <ScrollArea className="flex-1">
                 {fileTree ? (
@@ -243,7 +203,29 @@ export default function Home() {
             </div>
           )}
         </ResizablePanel>
-        <ResizableHandle withHandle />
+        <ResizableHandle className="relative">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-1/2 top-16 z-10 h-7 w-7 -translate-x-1/2 -translate-y-1/2"
+                  onClick={toggleLeftPanel}
+                >
+                  {isLeftPanelCollapsed ? (
+                    <PanelRightOpen className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftClose className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{isLeftPanelCollapsed ? "Expand" : "Collapse"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </ResizableHandle>
         <ResizablePanel defaultSize={55}>
           <ImageGallery
             files={filteredFiles}
@@ -252,7 +234,29 @@ export default function Home() {
             gridCols={gridCols}
           />
         </ResizablePanel>
-        <ResizableHandle withHandle />
+        <ResizableHandle className="relative">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-1/2 top-16 z-10 h-7 w-7 -translate-x-1/2 -translate-y-1/2"
+                  onClick={toggleRightPanel}
+                >
+                  {isRightPanelCollapsed ? (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  ) : (
+                    <PanelRightClose className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{isRightPanelCollapsed ? "Expand" : "Collapse"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </ResizableHandle>
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={25}
@@ -261,36 +265,8 @@ export default function Home() {
           collapsedSize={4}
           onCollapse={() => setIsRightPanelCollapsed(true)}
           onExpand={() => setIsRightPanelCollapsed(false)}
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            isRightPanelCollapsed && "min-w-[56px]"
-          )}
         >
-          {isRightPanelCollapsed ? (
-            <div className="flex h-full items-center justify-center p-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggleRightPanel}
-                    >
-                      <PanelLeftOpen className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    <p>Expand</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          ) : (
-            <MetadataViewer
-              image={selectedImage}
-              onCollapse={toggleRightPanel}
-            />
-          )}
+          {!isRightPanelCollapsed && <MetadataViewer image={selectedImage} />}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

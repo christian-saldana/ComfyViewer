@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, PanelRightClose } from "lucide-react";
+import { Info } from "lucide-react";
 import { getMetadata } from "meta-png";
 import {
   Accordion,
@@ -13,17 +13,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface MetadataViewerProps {
   image: File | null;
-  onCollapse?: () => void;
 }
 
 interface ComfyMetadata {
@@ -53,7 +45,7 @@ const MetadataItem = ({
   </li>
 );
 
-export function MetadataViewer({ image, onCollapse }: MetadataViewerProps) {
+export function MetadataViewer({ image }: MetadataViewerProps) {
   const [comfyMetadata, setComfyMetadata] =
     React.useState<ComfyMetadata | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -172,25 +164,6 @@ export function MetadataViewer({ image, onCollapse }: MetadataViewerProps) {
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-lg font-semibold">Metadata</h2>
-          {onCollapse && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={onCollapse}
-                  >
-                    <PanelRightClose className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Collapse Sidebar</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
         </div>
         <div className="flex flex-1 flex-col items-center justify-center p-4 text-center text-muted-foreground">
           <Info className="h-12 w-12" />
@@ -215,25 +188,6 @@ export function MetadataViewer({ image, onCollapse }: MetadataViewerProps) {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b p-4">
         <h2 className="text-lg font-semibold">Metadata</h2>
-        {onCollapse && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={onCollapse}
-                >
-                  <PanelRightClose className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Collapse Sidebar</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
       </div>
       <ScrollArea className="flex-1">
         <div className="p-4">
