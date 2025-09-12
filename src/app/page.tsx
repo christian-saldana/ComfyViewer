@@ -146,7 +146,7 @@ export default function Home() {
       </header>
 
       <ResizablePanelGroup direction="horizontal" className="w-full">
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+        <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible>
           <ScrollArea className="h-full">
             {fileTree ? (
               <FileTree
@@ -171,7 +171,7 @@ export default function Home() {
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
+        <ResizablePanel defaultSize={25} minSize={20} maxSize={40} collapsible>
           <MetadataViewer image={selectedImage} />
         </ResizablePanel>
       </ResizablePanelGroup>
