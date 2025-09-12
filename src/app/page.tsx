@@ -79,7 +79,6 @@ export default function Home() {
     "imageViewerFiles",
     []
   );
-  const [allFiles, setAllFiles] = React.useState<File[]>([]);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
@@ -97,19 +96,18 @@ export default function Home() {
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
-  // Effect to load files from local storage on initial mount
-  React.useEffect(() => {
-    if (storedImages.length > 0 && allFiles.length === 0) {
-      const loadedFiles = storedImages.map(storedImageToFile);
-      setAllFiles(loadedFiles);
-    }
-  }, [storedImages, allFiles.length]);
+  // Derive `allFiles` from `storedImages`. This is now the single source of truth.
+  const allFiles = React.useMemo(() => storedImages.map(storedImageToFile), [storedImages]);
 
   // Memoize derived state to avoid re-computation
   const fileTree = React.useMemo(() => buildFileTree(allFiles), [allFiles]);
 
   const filteredFiles = React.useMemo(() => {
     if (!selectedPath) {
+      // If nothing is selected, and we have files, default to showing the root.
+      if (fileTree) {
+        setSelectedPath(fileTree.path);
+      }
       return [];
     }
 
@@ -136,7 +134,7 @@ export default function Home() {
     });
 
     return newFilteredFiles;
-  }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder]);
+  }, [allFiles, selectedPath, viewSubfolders, sortBy, sortOrder, fileTree]);
 
   // Effect to set initial selected path when file tree is ready
   React.useEffect(() => {
@@ -159,9 +157,10 @@ export default function Home() {
 
       const storableImages: StoredImage[] = await Promise.all(
         imageFiles.map(async (file) => {
-          const dataURL = await new Promise<string>((resolve) => {
+          const dataURL = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
             reader.readAsDataURL(file);
           });
           return {
@@ -175,9 +174,10 @@ export default function Home() {
         })
       );
 
+      // This is now the only state update needed to save and display images.
       setStoredImages(storableImages);
-      setAllFiles(imageFiles);
       setSelectedImage(null);
+      
       // Reset selected path to the root of the new tree
       const newTree = buildFileTree(imageFiles);
       setSelectedPath(newTree ? newTree.path : "");
@@ -186,7 +186,6 @@ export default function Home() {
 
   const handleClearImages = () => {
     setStoredImages([]);
-    setAllFiles([]);
     setSelectedPath("");
     setSelectedImage(null);
   };
