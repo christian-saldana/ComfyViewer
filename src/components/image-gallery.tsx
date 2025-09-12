@@ -66,16 +66,6 @@ export function ImageGallery({
 
   return (
     <div className="flex h-full flex-col">
-      {showPagination && (
-        <GalleryPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-          itemsPerPage={itemsPerPage}
-          onItemsPerPageChange={onItemsPerPageChange}
-          itemsPerPageOptions={itemsPerPageOptions}
-        />
-      )}
       <ScrollArea className="flex-grow">
         <div
           className="grid gap-4 p-4"
