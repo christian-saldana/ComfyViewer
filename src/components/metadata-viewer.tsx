@@ -85,13 +85,18 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
           return;
         }
 
-        const jsonString = promptText.substring(jsonStart, jsonEnd + 1);
+        let jsonString = promptText.substring(jsonStart, jsonEnd + 1);
+        
+        // Sanitize the string to replace invalid JSON values like NaN
+        jsonString = jsonString.replace(/NaN/g, "null");
+
         const workflow = JSON.parse(jsonString);
 
         const ksamplerNodeEntry = Object.entries(workflow).find(
           ([, node]: [string, any]) =>
             node.class_type === "KSampler" ||
-            node.class_type === "KSamplerAdvanced"
+            node.class_type === "KSamplerAdvanced" ||
+            node.class_type === "SharkSampler_Beta"
         );
 
         if (!ksamplerNodeEntry) {
@@ -102,24 +107,26 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
         const ksamplerNode = ksamplerNodeEntry[1] as any;
         const inputs = ksamplerNode.inputs;
 
-        const positivePromptNodeId = inputs.positive[0];
-        const negativePromptNodeId = inputs.negative[0];
-
-        const positivePromptNode = workflow[positivePromptNodeId];
-        const negativePromptNode = workflow[negativePromptNodeId];
+        // Find prompt nodes, which might be linked or directly embedded
+        const positivePromptNode = Object.values(workflow).find(
+          (node: any) => node._meta?.title?.toLowerCase().includes("positive prompt")
+        ) as any;
+        const negativePromptNode = Object.values(workflow).find(
+          (node: any) => node._meta?.title?.toLowerCase().includes("negative prompt")
+        ) as any;
 
         if (!positivePromptNode || !negativePromptNode) {
-          setError("Could not trace prompts from the KSampler node.");
+          setError("Could not trace prompts from the workflow.");
           return;
         }
 
         const parsedData: ComfyMetadata = {
           prompt: positivePromptNode.inputs.text,
           negativePrompt: negativePromptNode.inputs.text,
-          seed: inputs.seed,
-          cfg: inputs.cfg,
-          steps: inputs.steps,
-          sampler: inputs.sampler_name,
+          seed: inputs.seed?.[0] ? workflow[inputs.seed[0]]?.inputs.value : inputs.seed,
+          cfg: inputs.cfg?.[0] ? workflow[inputs.cfg[0]]?.inputs.value : inputs.cfg,
+          steps: inputs.steps?.[0] ? workflow[inputs.steps[0]]?.inputs._int : inputs.steps,
+          sampler: inputs.sampler_name || (inputs.sampler?.[0] ? workflow[inputs.sampler[0]]?.inputs.sampler_name : "N/A"),
           scheduler: inputs.scheduler,
           fullWorkflow: workflow,
         };
