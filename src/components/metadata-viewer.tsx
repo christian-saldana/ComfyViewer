@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info } from "lucide-react";
+import { Info, PanelRightClose } from "lucide-react";
 import { getMetadata } from "meta-png";
 import {
   Accordion,
@@ -13,9 +13,17 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface MetadataViewerProps {
   image: File | null;
+  onCollapse?: () => void;
 }
 
 interface ComfyMetadata {
@@ -45,7 +53,7 @@ const MetadataItem = ({
   </li>
 );
 
-export function MetadataViewer({ image }: MetadataViewerProps) {
+export function MetadataViewer({ image, onCollapse }: MetadataViewerProps) {
   const [comfyMetadata, setComfyMetadata] =
     React.useState<ComfyMetadata | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -62,6 +70,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
     }
 
     // We only support PNG for ComfyUI metadata
+    
     if (image.type !== "image/png") {
       setComfyMetadata(null);
       return;
@@ -89,7 +98,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
         }
 
         let jsonString = promptText.substring(jsonStart, jsonEnd + 1);
-        
+
         // Sanitize the string to replace invalid JSON values like NaN
         jsonString = jsonString.replace(/NaN/g, "null");
 
@@ -112,10 +121,12 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
 
         // Find prompt nodes, which might be linked or directly embedded
         const positivePromptNode = Object.values(workflow).find(
-          (node: any) => node._meta?.title?.toLowerCase().includes("positive prompt")
+          (node: any) =>
+            node._meta?.title?.toLowerCase().includes("positive prompt")
         ) as any;
         const negativePromptNode = Object.values(workflow).find(
-          (node: any) => node._meta?.title?.toLowerCase().includes("negative prompt")
+          (node: any) =>
+            node._meta?.title?.toLowerCase().includes("negative prompt")
         ) as any;
 
         if (!positivePromptNode || !negativePromptNode) {
@@ -126,10 +137,20 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
         const parsedData: ComfyMetadata = {
           prompt: positivePromptNode.inputs.text,
           negativePrompt: negativePromptNode.inputs.text,
-          seed: inputs.seed?.[0] ? workflow[inputs.seed[0]]?.inputs.value : inputs.seed,
-          cfg: inputs.cfg?.[0] ? workflow[inputs.cfg[0]]?.inputs.value : inputs.cfg,
-          steps: inputs.steps?.[0] ? workflow[inputs.steps[0]]?.inputs._int : inputs.steps,
-          sampler: inputs.sampler_name || (inputs.sampler?.[0] ? workflow[inputs.sampler[0]]?.inputs.sampler_name : "N/A"),
+          seed: inputs.seed?.[0]
+            ? workflow[inputs.seed[0]]?.inputs.value
+            : inputs.seed,
+          cfg: inputs.cfg?.[0]
+            ? workflow[inputs.cfg[0]]?.inputs.value
+            : inputs.cfg,
+          steps: inputs.steps?.[0]
+            ? workflow[inputs.steps[0]]?.inputs._int
+            : inputs.steps,
+          sampler:
+            inputs.sampler_name ||
+            (inputs.sampler?.[0]
+              ? workflow[inputs.sampler[0]]?.inputs.sampler_name
+              : "N/A"),
           scheduler: inputs.scheduler,
           fullWorkflow: workflow,
         };
@@ -148,10 +169,34 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
 
   if (!image) {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-4 text-center text-muted-foreground">
-        <Info className="h-12 w-12" />
-        <h2 className="mt-4 text-lg font-semibold">No Image Selected</h2>
-        <p className="mt-1 text-sm">Select an image to view its details.</p>
+      <div className="flex h-full flex-col">
+        <div className="flex items-center justify-between border-b p-4">
+          <h2 className="text-lg font-semibold">Metadata</h2>
+          {onCollapse && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={onCollapse}
+                  >
+                    <PanelRightClose className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Collapse Sidebar</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center p-4 text-center text-muted-foreground">
+          <Info className="h-12 w-12" />
+          <h2 className="mt-4 text-lg font-semibold">No Image Selected</h2>
+          <p className="mt-1 text-sm">Select an image to view its details.</p>
+        </div>
       </div>
     );
   }
@@ -168,7 +213,28 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <h2 className="border-b p-4 text-lg font-semibold">Metadata</h2>
+      <div className="flex items-center justify-between border-b p-4">
+        <h2 className="text-lg font-semibold">Metadata</h2>
+        {onCollapse && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={onCollapse}
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Collapse Sidebar</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
       <ScrollArea className="flex-1">
         <div className="p-4">
           <h3 className="mb-2 text-base font-semibold">File Details</h3>

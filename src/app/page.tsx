@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Folder } from "lucide-react";
+import { Folder, PanelLeftClose, PanelRightClose } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
+  ImperativePanelHandle,
 } from "@/components/ui/resizable";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
@@ -32,6 +33,8 @@ export default function Home() {
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
   const [gridCols, setGridCols] = React.useState(4);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
+  const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -59,6 +62,20 @@ export default function Home() {
 
   const handleFolderSelectClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const toggleLeftPanel = () => {
+    const panel = leftPanelRef.current;
+    if (panel) {
+      panel.isCollapsed() ? panel.expand() : panel.collapse();
+    }
+  };
+
+  const toggleRightPanel = () => {
+    const panel = rightPanelRef.current;
+    if (panel) {
+      panel.isCollapsed() ? panel.expand() : panel.collapse();
+    }
   };
 
   React.useEffect(() => {
@@ -146,20 +163,48 @@ export default function Home() {
       </header>
 
       <ResizablePanelGroup direction="horizontal" className="w-full">
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible>
-          <ScrollArea className="h-full">
-            {fileTree ? (
-              <FileTree
-                tree={fileTree}
-                selectedPath={selectedPath}
-                onSelectPath={handleFolderSelect}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
-                Select a folder to view its structure.
-              </div>
-            )}
-          </ScrollArea>
+        <ResizablePanel
+          ref={leftPanelRef}
+          defaultSize={20}
+          minSize={15}
+          maxSize={30}
+          collapsible
+        >
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between border-b p-4">
+              <h2 className="text-lg font-semibold">Folders</h2>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={toggleLeftPanel}
+                    >
+                      <PanelLeftClose className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Collapse Sidebar</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <ScrollArea className="flex-1">
+              {fileTree ? (
+                <FileTree
+                  tree={fileTree}
+                  selectedPath={selectedPath}
+                  onSelectPath={handleFolderSelect}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
+                  Select a folder to view its structure.
+                </div>
+              )}
+            </ScrollArea>
+          </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={55}>
@@ -171,8 +216,14 @@ export default function Home() {
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={25} minSize={20} maxSize={40} collapsible>
-          <MetadataViewer image={selectedImage} />
+        <ResizablePanel
+          ref={rightPanelRef}
+          defaultSize={25}
+          minSize={20}
+          maxSize={40}
+          collapsible
+        >
+          <MetadataViewer image={selectedImage} onCollapse={toggleRightPanel} />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
