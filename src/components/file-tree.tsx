@@ -49,10 +49,24 @@ function RecursiveTree({
     }
   }, [selectedPath, isParentOfSelected]);
 
+  // If the folder has no sub-folders, render it as a simple, non-collapsible item.
   if (node.children.length === 0) {
-    return null; // Don't render empty folders
+    return (
+      <div
+        className={cn(
+          "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium",
+          "hover:bg-accent",
+          isSelected && "bg-primary/10 text-primary"
+        )}
+        onClick={() => onSelectPath(node.path)}
+      >
+        <Folder className="h-4 w-4" />
+        <span>{node.name}</span>
+      </div>
+    );
   }
 
+  // If the folder has sub-folders, render it as a collapsible item.
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger
