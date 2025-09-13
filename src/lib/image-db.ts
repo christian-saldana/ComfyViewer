@@ -4,7 +4,7 @@ import { openDB, DBSchema } from 'idb';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 5; // Incremented version
+const DB_VERSION = 6; // Incremented version for new indexes
 
 // This is the object we'll work with in the application
 export interface StoredImage {
@@ -32,19 +32,25 @@ interface MyDB extends DBSchema {
   [STORE_NAME]: {
     key: number;
     value: StorableFile;
-    indexes: { 'by-path': string };
+    indexes: {
+      'by-path': string;
+      'by-lastModified': number;
+      'by-size': number;
+    };
   };
 }
 
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 5) {
+      if (oldVersion < 6) {
         if (db.objectStoreNames.contains(STORE_NAME)) {
           db.deleteObjectStore(STORE_NAME);
         }
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
         store.createIndex('by-path', 'webkitRelativePath');
+        store.createIndex('by-lastModified', 'lastModified');
+        store.createIndex('by-size', 'size');
       }
     },
   });
@@ -80,27 +86,78 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
 
     const tx = db.transaction(STORE_NAME, 'readwrite');
     await Promise.all([
-      ...storableFilesChunk.map(sf => tx.store.put(sf as any)), // `id` is auto-incremented
+      ...storableFilesChunk.map(sf => tx.store.put(sf as any)),
       tx.done,
     ]);
   }
 }
 
-// Gets only the metadata, not the heavy buffer
-export async function getStoredImages(): Promise<StoredImage[]> {
-  const db = await getDb();
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const images: StoredImage[] = [];
-  let cursor = await tx.store.openCursor();
-  while (cursor) {
-    const { buffer, ...metadata } = cursor.value;
-    images.push({ ...metadata, id: cursor.primaryKey });
-    cursor = await cursor.continue();
-  }
-  return images;
+export interface GetImagesParams {
+  page: number;
+  itemsPerPage: number;
+  sortBy: 'lastModified' | 'size';
+  sortOrder: 'asc' | 'desc';
+  filterPath: string;
+  viewSubfolders: boolean;
 }
 
-// Gets a single full image file by its ID
+export interface PaginatedImageResponse {
+  images: StoredImage[];
+  totalCount: number;
+}
+
+export async function getPaginatedImages(params: GetImagesParams): Promise<PaginatedImageResponse> {
+  const { page, itemsPerPage, sortBy, sortOrder, filterPath, viewSubfolders } = params;
+  if (!filterPath) {
+    return { images: [], totalCount: 0 };
+  }
+
+  const db = await getDb();
+  const tx = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.store;
+
+  const indexName = sortBy === 'lastModified' ? 'by-lastModified' : 'by-size';
+  const direction = sortOrder === 'asc' ? 'next' : 'prev';
+  const index = store.index(indexName);
+
+  const images: StoredImage[] = [];
+  let totalCount = 0;
+  const offset = (page - 1) * itemsPerPage;
+
+  let cursor = await index.openCursor(null, direction);
+
+  while (cursor) {
+    const path = cursor.value.webkitRelativePath;
+    const parentDirectory = path.substring(0, path.lastIndexOf("/"));
+    const shouldInclude = viewSubfolders
+      ? path.startsWith(filterPath)
+      : parentDirectory === filterPath;
+
+    if (shouldInclude) {
+      if (totalCount >= offset && images.length < itemsPerPage) {
+        const { buffer, ...metadata } = cursor.value;
+        images.push({ ...metadata, id: cursor.primaryKey });
+      }
+      totalCount++;
+    }
+    cursor = await cursor.continue();
+  }
+
+  return { images, totalCount };
+}
+
+export async function getAllImagePaths(): Promise<{ webkitRelativePath: string }[]> {
+    const db = await getDb();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const paths: { webkitRelativePath: string }[] = [];
+    let cursor = await tx.store.openCursor();
+    while (cursor) {
+        paths.push({ webkitRelativePath: cursor.value.webkitRelativePath });
+        cursor = await cursor.continue();
+    }
+    return paths;
+}
+
 export async function getStoredImageFile(id: number): Promise<File | null> {
   const db = await getDb();
   const storableFile = await db.get(STORE_NAME, id);
