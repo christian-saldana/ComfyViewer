@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { ImageViewerDialog } from "./image-viewer-dialog";
-import { StoredImage } from "@/lib/image-db";
+import { StoredImage, getStoredImageFile } from "@/lib/image-db";
 import { GalleryPagination } from "./gallery-pagination";
 import { LazyImage } from "./lazy-image";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -12,8 +12,8 @@ import { ScrollContainerContext } from "./scroll-container-context";
 
 interface ImageGalleryProps {
   files: StoredImage[];
-  selectedImage: File | null;
-  onSelectImage: (file: File) => void;
+  selectedImageId: number | null;
+  onSelectImage: (id: number) => void;
   gridCols: number;
   currentPage: number;
   totalPages: number;
@@ -25,7 +25,7 @@ interface ImageGalleryProps {
 
 export function ImageGallery({
   files,
-  selectedImage,
+  selectedImageId,
   onSelectImage,
   gridCols,
   currentPage,
@@ -39,10 +39,13 @@ export function ImageGallery({
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
   const parentRef = React.useRef<HTMLDivElement>(null);
 
-  const handleDoubleClick = (file: File) => {
-    const objectUrl = URL.createObjectURL(file);
-    setFullscreenImageSrc(objectUrl);
-    setIsViewerOpen(true);
+  const handleDoubleClick = async (id: number) => {
+    const file = await getStoredImageFile(id);
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setFullscreenImageSrc(objectUrl);
+      setIsViewerOpen(true);
+    }
   };
 
   React.useEffect(() => {
@@ -108,23 +111,22 @@ export function ImageGallery({
                     padding: "1rem",
                   }}
                 >
-                  {itemsInRow.map(({ file }) => (
+                  {itemsInRow.map((image) => (
                     <div
-                      key={file.name + file.webkitRelativePath}
+                      key={image.id}
                       className={cn(
                         "relative cursor-pointer overflow-hidden border-2",
-                        selectedImage?.name === file.name &&
-                          selectedImage.webkitRelativePath === file.webkitRelativePath
+                        selectedImageId === image.id
                           ? "border-primary"
                           : "border-transparent",
                         !isSingleColumn && "aspect-square"
                       )}
-                      onClick={() => onSelectImage(file)}
-                      onDoubleClick={() => handleDoubleClick(file)}
+                      onClick={() => onSelectImage(image.id)}
+                      onDoubleClick={() => handleDoubleClick(image.id)}
                     >
                       <LazyImage
-                        file={file}
-                        alt={file.name}
+                        imageId={image.id}
+                        alt={image.name}
                         className={cn(
                           "h-full w-full",
                           isSingleColumn ? "object-contain" : "object-cover"
@@ -132,7 +134,7 @@ export function ImageGallery({
                       />
                       <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
                         <p className="truncate text-xs font-medium text-white">
-                          {file.name}
+                          {image.name}
                         </p>
                       </div>
                     </div>
@@ -155,7 +157,7 @@ export function ImageGallery({
       )}
       <ImageViewerDialog
         src={fullscreenImageSrc}
-        alt={selectedImage?.name || "Fullscreen Image"}
+        alt={"Fullscreen Image"}
         open={isViewerOpen}
         onOpenChange={setIsViewerOpen}
       />

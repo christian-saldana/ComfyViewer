@@ -40,20 +40,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { storeImages, getStoredImages, clearImages, StoredImage } from "@/lib/image-db";
+import { storeImages, getStoredImages, clearImages, StoredImage, getStoredImageFile } from "@/lib/image-db";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
-const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96];
+const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96, 200];
 const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
 
 export default function Home() {
   const [allFiles, setAllFiles] = React.useState<StoredImage[]>([]);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
-  const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
+  const [selectedImageId, setSelectedImageId] = React.useState<number | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = React.useState<File | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
   const [gridCols, setGridCols] = React.useState(4);
   const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
@@ -61,7 +62,7 @@ export default function Home() {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
-  
+
   const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -74,7 +75,6 @@ export default function Home() {
   const MIN_COLS = 1;
   const MAX_COLS = 12;
 
-  // Load initial images from IndexedDB
   React.useEffect(() => {
     async function loadInitialImages() {
       setIsLoading(true);
@@ -87,7 +87,6 @@ export default function Home() {
     loadInitialImages();
   }, []);
 
-  // Load persisted settings from localStorage on mount
   React.useEffect(() => {
     const storedItemsPerPage = localStorage.getItem(ITEMS_PER_PAGE_KEY);
     if (storedItemsPerPage) {
@@ -98,12 +97,14 @@ export default function Home() {
     }
   }, []);
 
-  // Save settings to localStorage when they change
   React.useEffect(() => {
     localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage));
   }, [itemsPerPage]);
 
-  const fileTree = React.useMemo(() => buildFileTree(allFiles.map(f => f.file)), [allFiles]);
+  const fileTree = React.useMemo(() => {
+    const fakeFiles = allFiles.map(f => ({ webkitRelativePath: f.webkitRelativePath })) as File[];
+    return buildFileTree(fakeFiles);
+  }, [allFiles]);
 
   const filteredFiles = React.useMemo(() => {
     if (!selectedPath) {
@@ -111,13 +112,12 @@ export default function Home() {
     }
 
     let newFilteredFiles = allFiles.filter((storedImage) => {
-      const file = storedImage.file;
       if (viewSubfolders) {
-        return file.webkitRelativePath.startsWith(selectedPath);
+        return storedImage.webkitRelativePath.startsWith(selectedPath);
       } else {
-        const parentDirectory = file.webkitRelativePath.substring(
+        const parentDirectory = storedImage.webkitRelativePath.substring(
           0,
-          file.webkitRelativePath.lastIndexOf("/")
+          storedImage.webkitRelativePath.lastIndexOf("/")
         );
         return parentDirectory === selectedPath;
       }
@@ -126,9 +126,9 @@ export default function Home() {
     newFilteredFiles.sort((a, b) => {
       let compareValue = 0;
       if (sortBy === "lastModified") {
-        compareValue = a.file.lastModified - b.file.lastModified;
+        compareValue = a.lastModified - b.lastModified;
       } else if (sortBy === "size") {
-        compareValue = a.file.size - b.file.size;
+        compareValue = a.size - b.size;
       }
       return sortOrder === "asc" ? compareValue : -compareValue;
     });
@@ -145,6 +145,22 @@ export default function Home() {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage]);
+
+  React.useEffect(() => {
+    if (selectedImageId === null) {
+      setSelectedImageFile(null);
+      return;
+    }
+    let isCancelled = false;
+    async function fetchFile() {
+      const file = await getStoredImageFile(selectedImageId!);
+      if (!isCancelled) {
+        setSelectedImageFile(file);
+      }
+    }
+    fetchFile();
+    return () => { isCancelled = true; };
+  }, [selectedImageId]);
 
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
   const paginatedFiles = React.useMemo(() => {
@@ -168,12 +184,12 @@ export default function Home() {
       setIsLoading(true);
       setProgress(0);
       await storeImages(imageFiles, (p) => setProgress(p));
-      
+
       const storedImages = await getStoredImages();
       setAllFiles(storedImages);
-      setSelectedImage(null);
+      setSelectedImageId(null);
       setCurrentPage(1);
-      
+
       const newTree = buildFileTree(imageFiles);
       setSelectedPath(newTree ? newTree.path : "");
       setIsLoading(false);
@@ -184,13 +200,13 @@ export default function Home() {
     await clearImages();
     setAllFiles([]);
     setSelectedPath("");
-    setSelectedImage(null);
+    setSelectedImageId(null);
     setCurrentPage(1);
   };
 
   const handleFolderSelect = (path: string) => {
     setSelectedPath(path);
-    setSelectedImage(null);
+    setSelectedImageId(null);
   };
 
   const handleFolderSelectClick = () => {
@@ -385,8 +401,8 @@ export default function Home() {
         <ResizablePanel defaultSize={55}>
           <ImageGallery
             files={paginatedFiles}
-            selectedImage={selectedImage}
-            onSelectImage={setSelectedImage}
+            selectedImageId={selectedImageId}
+            onSelectImage={setSelectedImageId}
             gridCols={gridCols}
             currentPage={currentPage}
             totalPages={totalPages}
@@ -428,7 +444,7 @@ export default function Home() {
           onCollapse={() => setIsRightPanelCollapsed(true)}
           onExpand={() => setIsRightPanelCollapsed(false)}
         >
-          {!isRightPanelCollapsed && <MetadataViewer image={selectedImage} />}
+          {!isRightPanelCollapsed && <MetadataViewer image={selectedImageFile} />}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

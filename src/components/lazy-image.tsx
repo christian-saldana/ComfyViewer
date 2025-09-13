@@ -4,14 +4,15 @@ import * as React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { ScrollContainerContext } from "./scroll-container-context";
+import { getStoredImageFile } from "@/lib/image-db";
 
 interface LazyImageProps {
-  file: File;
+  imageId: number;
   alt: string;
   className: string;
 }
 
-export function LazyImage({ file, alt, className }: LazyImageProps) {
+export function LazyImage({ imageId, alt, className }: LazyImageProps) {
   const [imageSrc, setImageSrc] = React.useState<string | null>(null);
   const placeholderRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useContext(ScrollContainerContext);
@@ -25,10 +26,13 @@ export function LazyImage({ file, alt, className }: LazyImageProps) {
       const scrollParent = scrollContainerRef?.current ?? null;
 
       observer = new IntersectionObserver(
-        ([entry]) => {
+        async ([entry]) => {
           if (entry.isIntersecting) {
-            objectUrl = URL.createObjectURL(file);
-            setImageSrc(objectUrl);
+            const file = await getStoredImageFile(imageId);
+            if (file) {
+              objectUrl = URL.createObjectURL(file);
+              setImageSrc(objectUrl);
+            }
             observer.unobserve(currentRef);
           }
         },
@@ -48,7 +52,7 @@ export function LazyImage({ file, alt, className }: LazyImageProps) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [file, scrollContainerRef]);
+  }, [imageId, scrollContainerRef]);
 
   if (imageSrc) {
     return <img src={imageSrc} alt={alt} className={className} />;
