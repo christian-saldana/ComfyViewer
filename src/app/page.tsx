@@ -10,6 +10,7 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Trash2,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,19 +22,18 @@ import {
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
 import { FileTree } from "@/components/file-tree";
-import { buildFileTree, FileTreeNode } from "@/lib/file-tree";
+import { buildFileTree } from "@/lib/file-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
-
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -51,6 +51,23 @@ type SortOrder = "asc" | "desc";
 const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96, 200];
 const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
 
+// Custom hook for debouncing a value
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function Home() {
   const [allPaths, setAllPaths] = React.useState<{ webkitRelativePath: string }[]>([]);
   const [paginatedFiles, setPaginatedFiles] = React.useState<StoredImage[]>([]);
@@ -66,6 +83,8 @@ export default function Home() {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
+  const [filterQuery, setFilterQuery] = React.useState("");
+  const debouncedFilterQuery = useDebounce(filterQuery, 300);
 
   const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
 
@@ -97,11 +116,10 @@ export default function Home() {
     return buildFileTree(allPaths as File[]);
   }, [allPaths]);
 
-  const fetchPaginatedData = React.useCallback(async (path: string, page: number) => {
+  const fetchPaginatedData = React.useCallback(async (path: string, page: number, query: string) => {
     if (!path) return;
 
     setIsLoading(true);
-    console.log('here')
     const response = await getPaginatedImages({
       page,
       itemsPerPage,
@@ -109,8 +127,8 @@ export default function Home() {
       sortOrder,
       filterPath: path,
       viewSubfolders,
+      filterQuery: query,
     });
-    console.log('here2')
 
     setPaginatedFiles(response.images);
     setTotalImageCount(response.totalCount);
@@ -131,7 +149,7 @@ export default function Home() {
         const tree = buildFileTree(paths as any);
         const initialPath = tree ? tree.path : "";
         setSelectedPath(initialPath);
-        await fetchPaginatedData(initialPath, 1);
+        await fetchPaginatedData(initialPath, 1, "");
       }
       setIsLoading(false);
     }
@@ -140,13 +158,13 @@ export default function Home() {
 
   React.useEffect(() => {
     if (selectedPath) {
-      fetchPaginatedData(selectedPath, currentPage);
+      fetchPaginatedData(selectedPath, currentPage, debouncedFilterQuery);
     }
-  }, [currentPage, fetchPaginatedData, selectedPath]);
+  }, [currentPage, debouncedFilterQuery, fetchPaginatedData, selectedPath]);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage]);
+  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery]);
 
   React.useEffect(() => {
     if (selectedImageId === null) {
@@ -191,7 +209,7 @@ export default function Home() {
       setSelectedPath(newPath);
 
       setCurrentPage(1);
-      await fetchPaginatedData(newPath, 1);
+      await fetchPaginatedData(newPath, 1, debouncedFilterQuery);
 
       setIsLoading(false);
     }
@@ -309,58 +327,69 @@ export default function Home() {
         >
           {!isLeftPanelCollapsed && (
             <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b p-4">
-                <h2 className="text-lg font-semibold">Folders</h2>
-                <div className="flex items-center gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button onClick={handleFolderSelectClick} size="icon" variant="outline" disabled={isLoading}>
-                          <Folder className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Select Folder</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button onClick={handleClearImages} size="icon" variant="outline" disabled={isLoading}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Clear Images</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <Separator orientation="vertical" className="mx-1 h-6" />
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="view-subfolders"
-                            checked={viewSubfolders}
-                            onCheckedChange={setViewSubfolders}
-                            disabled={isLoading}
-                          />
-                          <Label
-                            htmlFor="view-subfolders"
-                            className="cursor-pointer text-sm"
-                          >
-                            Subfolders
-                          </Label>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Show images from all subfolders.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+              <div className="flex flex-col gap-4 border-b p-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Folders</h2>
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button onClick={handleFolderSelectClick} size="icon" variant="outline" disabled={isLoading}>
+                            <Folder className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Select Folder</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button onClick={handleClearImages} size="icon" variant="outline" disabled={isLoading}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Clear Images</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter by name or metadata..."
+                    className="pl-8"
+                    value={filterQuery}
+                    onChange={(e) => setFilterQuery(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="view-subfolders"
+                          checked={viewSubfolders}
+                          onCheckedChange={setViewSubfolders}
+                          disabled={isLoading}
+                        />
+                        <Label
+                          htmlFor="view-subfolders"
+                          className="cursor-pointer text-sm"
+                        >
+                          View Subfolders
+                        </Label>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Show images from all subfolders.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <ScrollArea className="flex-1">
                 {fileTree ? (

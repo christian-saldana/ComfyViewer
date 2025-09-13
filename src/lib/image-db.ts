@@ -1,10 +1,11 @@
 "use client";
 
 import { openDB, DBSchema } from 'idb';
+import { getMetadata } from 'meta-png';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 7; // Version bump for schema change
+const DB_VERSION = 8; // Version bump for schema change
 const PATHS_STORAGE_KEY = 'image-viewer-paths';
 
 // This is the object we'll work with in the application
@@ -15,11 +16,12 @@ export interface StoredImage {
   lastModified: number;
   webkitRelativePath: string;
   size: number;
+
   thumbnail: string;
+  workflow: string | null;
 }
 
 // This interface defines the shape of the metadata we'll store in IndexedDB.
-// The actual file buffer is no longer stored here.
 interface StorableMetadata {
   name: string;
   type: string;
@@ -27,6 +29,7 @@ interface StorableMetadata {
   webkitRelativePath: string;
   thumbnail: string;
   size: number;
+  workflow: string | null;
 }
 
 interface MyDB extends DBSchema {
@@ -37,6 +40,8 @@ interface MyDB extends DBSchema {
       'by-path': string;
       'by-lastModified': number;
       'by-size': number;
+      'by-name': string;
+      'by-workflow': string;
     };
   };
 }
@@ -44,7 +49,7 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 7) {
+      if (oldVersion < 8) {
         if (db.objectStoreNames.contains(STORE_NAME)) {
           db.deleteObjectStore(STORE_NAME);
         }
@@ -52,13 +57,14 @@ async function getDb() {
         store.createIndex('by-path', 'webkitRelativePath');
         store.createIndex('by-lastModified', 'lastModified');
         store.createIndex('by-size', 'size');
+        store.createIndex('by-name', 'name');
+        store.createIndex('by-workflow', 'workflow');
       }
     },
   });
 }
 
 export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
-  // First, clear out any old data from all storage systems
   await clearImages();
 
   const db = await getDb();
@@ -66,18 +72,28 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
 
   let processedCount = 0;
   const totalFiles = files.length;
-  const CHUNK_SIZE = 100; // Process in chunks to avoid transaction timeouts
+  const CHUNK_SIZE = 100;
 
   for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
     const chunk = files.slice(i, i + CHUNK_SIZE);
     const metadataChunk: StorableMetadata[] = [];
 
-    // First, perform all file system operations for the current chunk
     for (const file of chunk) {
       const fileHandle = await root.getFileHandle(file.name, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(file);
       await writable.close();
+
+      let workflow: string | null = null;
+      if (file.type === 'image/png') {
+        try {
+          const buffer = await file.arrayBuffer();
+          const pngBytes = new Uint8Array(buffer);
+          workflow = getMetadata(pngBytes, "workflow") || getMetadata(pngBytes, "prompt") || null;
+        } catch (e) {
+          console.warn(`Could not parse metadata for ${file.name}:`, e);
+        }
+      }
 
       metadataChunk.push({
         name: file.name,
@@ -86,6 +102,7 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
         webkitRelativePath: file.webkitRelativePath,
         thumbnail: '',
         size: file.size,
+        workflow: workflow,
       });
 
       processedCount++;
@@ -94,7 +111,6 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
       }
     }
 
-    // Now, perform a single, quick transaction to store the metadata for the chunk
     const tx = db.transaction(STORE_NAME, 'readwrite');
     await Promise.all([
       ...metadataChunk.map(metadata => tx.store.add(metadata)),
@@ -102,7 +118,6 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
     ]);
   }
 
-  // Cache the relative paths in localStorage for quick access
   const paths = files.map(file => ({ webkitRelativePath: file.webkitRelativePath }));
   localStorage.setItem(PATHS_STORAGE_KEY, JSON.stringify(paths));
 }
@@ -114,6 +129,7 @@ export interface GetImagesParams {
   sortOrder: 'asc' | 'desc';
   filterPath: string;
   viewSubfolders: boolean;
+  filterQuery?: string;
 }
 
 export interface PaginatedImageResponse {
@@ -122,7 +138,7 @@ export interface PaginatedImageResponse {
 }
 
 export async function getPaginatedImages(params: GetImagesParams): Promise<PaginatedImageResponse> {
-  const { page, itemsPerPage, sortBy, sortOrder, filterPath, viewSubfolders } = params;
+  const { page, itemsPerPage, sortBy, sortOrder, filterPath, viewSubfolders, filterQuery } = params;
   if (!filterPath) {
     return { images: [], totalCount: 0 };
   }
@@ -139,17 +155,25 @@ export async function getPaginatedImages(params: GetImagesParams): Promise<Pagin
   let totalCount = 0;
   const offset = (page - 1) * itemsPerPage;
   let itemsAdded = 0;
+  const lowerCaseQuery = filterQuery?.toLowerCase();
 
   let cursor = await index.openCursor(null, direction);
 
   while (cursor) {
-    const path = cursor.value.webkitRelativePath;
-    const parentDirectory = path.substring(0, path.lastIndexOf("/"));
-    const shouldInclude = viewSubfolders
-      ? path.startsWith(filterPath)
+    const { webkitRelativePath, name, workflow } = cursor.value;
+    const parentDirectory = webkitRelativePath.substring(0, webkitRelativePath.lastIndexOf("/"));
+    const shouldIncludeByPath = viewSubfolders
+      ? webkitRelativePath.startsWith(filterPath)
       : parentDirectory === filterPath;
 
-    if (shouldInclude) {
+    let shouldIncludeByFilter = true;
+    if (lowerCaseQuery) {
+      const nameMatch = name.toLowerCase().includes(lowerCaseQuery);
+      const workflowMatch = workflow ? workflow.toLowerCase().includes(lowerCaseQuery) : false;
+      shouldIncludeByFilter = nameMatch || workflowMatch;
+    }
+
+    if (shouldIncludeByPath && shouldIncludeByFilter) {
       if (totalCount >= offset && itemsAdded < itemsPerPage) {
         images.push({ ...cursor.value, id: cursor.primaryKey });
         itemsAdded++;
@@ -185,7 +209,6 @@ export async function getStoredImageFile(id: number): Promise<File | null> {
     const fileHandle = await root.getFileHandle(metadata.name);
     const file = await fileHandle.getFile();
 
-    // The File object from OPFS doesn't include the relative path, so we re-attach it from our metadata.
     Object.defineProperty(file, 'webkitRelativePath', {
       value: metadata.webkitRelativePath,
       writable: false,
@@ -198,14 +221,11 @@ export async function getStoredImageFile(id: number): Promise<File | null> {
 }
 
 export async function clearImages() {
-  // Clear IndexedDB
   const db = await getDb();
   await db.clear(STORE_NAME);
 
-  // Clear localStorage cache
   localStorage.removeItem(PATHS_STORAGE_KEY);
 
-  // Clear all files from the Origin Private File System for this site
   try {
     const root = await navigator.storage.getDirectory();
     for await (const key of root.keys()) {
