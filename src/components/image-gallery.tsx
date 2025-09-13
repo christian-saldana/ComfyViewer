@@ -71,60 +71,62 @@ export function ImageGallery({
   const isSingleColumn = gridCols === 1;
 
   return (
-    <div className="relative h-full">
-      <div className="h-full overflow-auto p-4 pb-20">
-        <div
-          className="grid gap-4"
-          style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
-        >
-          {files.map((image) => (
-            <div
-              key={image.id}
-              className={cn(
-                "relative cursor-pointer overflow-hidden rounded-md border-2",
-                selectedImageId === image.id
-                  ? "border-primary"
-                  : "border-transparent",
-                !isSingleColumn && "aspect-square"
-              )}
-              onClick={() => onSelectImage(image.id)}
-              onDoubleClick={() => handleDoubleClick(image)}
-            >
-              <LazyImage
-                imageId={image.id}
-                alt={image.name}
+    <>
+      <div className="flex h-full flex-col">
+        <div className="flex-1 overflow-y-auto p-4">
+          <div
+            className="grid gap-4"
+            style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+          >
+            {files.map((image) => (
+              <div
+                key={image.id}
                 className={cn(
-                  "h-full w-full",
-                  isSingleColumn ? "object-contain" : "object-cover"
+                  "relative cursor-pointer overflow-hidden rounded-md border-2",
+                  selectedImageId === image.id
+                    ? "border-primary"
+                    : "border-transparent",
+                  !isSingleColumn && "aspect-square"
                 )}
-              />
-              <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
-                <p className="truncate text-xs font-medium text-white">
-                  {image.name}
-                </p>
+                onClick={() => onSelectImage(image.id)}
+                onDoubleClick={() => handleDoubleClick(image)}
+              >
+                <LazyImage
+                  imageId={image.id}
+                  alt={image.name}
+                  className={cn(
+                    "h-full w-full",
+                    isSingleColumn ? "object-contain" : "object-cover"
+                  )}
+                />
+                <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
+                  <p className="truncate text-xs font-medium text-white">
+                    {image.name}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+        {showPagination && (
+          <div className="flex-shrink-0">
+            <GalleryPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={onItemsPerPageChange}
+              itemsPerPageOptions={itemsPerPageOptions}
+            />
+          </div>
+        )}
       </div>
-      {showPagination && (
-        <div className="absolute bottom-0 left-0 w-full">
-          <GalleryPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={onItemsPerPageChange}
-            itemsPerPageOptions={itemsPerPageOptions}
-          />
-        </div>
-      )}
       <ImageViewerDialog
         src={fullscreenImageSrc}
         alt={fullscreenImageAlt}
         open={isViewerOpen}
         onOpenChange={setIsViewerOpen}
       />
-    </div>
+    </>
   );
 }
