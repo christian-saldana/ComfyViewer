@@ -61,8 +61,9 @@ export function ImageGallery({
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (parentRef.current ? parentRef.current.offsetWidth / columnCount : 250),
+    estimateSize: () => (parentRef.current ? (parentRef.current.offsetWidth - 32) / columnCount : 250),
     overscan: 3,
+    gap: 16,
   });
 
   if (files.length === 0) {
@@ -83,7 +84,7 @@ export function ImageGallery({
   return (
     <div className="flex h-full flex-col">
       <ScrollContainerContext.Provider value={parentRef}>
-        <div ref={parentRef} className="flex-grow overflow-auto">
+        <div ref={parentRef} className="flex-grow overflow-auto p-4">
           <div
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
@@ -108,7 +109,6 @@ export function ImageGallery({
                     display: "grid",
                     gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
                     gap: "1rem",
-                    padding: "1rem",
                   }}
                 >
                   {itemsInRow.map((image) => (

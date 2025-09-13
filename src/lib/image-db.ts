@@ -63,10 +63,10 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
 
   const db = await getDb();
   const root = await navigator.storage.getDirectory();
-  
+
   let processedCount = 0;
   const totalFiles = files.length;
-  const CHUNK_SIZE = 50; // Process in chunks to avoid transaction timeouts
+  const CHUNK_SIZE = 100; // Process in chunks to avoid transaction timeouts
 
   for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
     const chunk = files.slice(i, i + CHUNK_SIZE);
@@ -163,16 +163,16 @@ export async function getPaginatedImages(params: GetImagesParams): Promise<Pagin
 }
 
 export function getStoredImagePaths(): { webkitRelativePath: string }[] {
-    const storedPaths = localStorage.getItem(PATHS_STORAGE_KEY);
-    if (storedPaths) {
-        try {
-            return JSON.parse(storedPaths);
-        } catch (e) {
-            console.error("Failed to parse stored paths from localStorage", e);
-            return [];
-        }
+  const storedPaths = localStorage.getItem(PATHS_STORAGE_KEY);
+  if (storedPaths) {
+    try {
+      return JSON.parse(storedPaths);
+    } catch (e) {
+      console.error("Failed to parse stored paths from localStorage", e);
+      return [];
     }
-    return [];
+  }
+  return [];
 }
 
 export async function getStoredImageFile(id: number): Promise<File | null> {
@@ -184,7 +184,7 @@ export async function getStoredImageFile(id: number): Promise<File | null> {
     const root = await navigator.storage.getDirectory();
     const fileHandle = await root.getFileHandle(metadata.name);
     const file = await fileHandle.getFile();
-    
+
     // The File object from OPFS doesn't include the relative path, so we re-attach it from our metadata.
     Object.defineProperty(file, 'webkitRelativePath', {
       value: metadata.webkitRelativePath,
@@ -201,7 +201,7 @@ export async function clearImages() {
   // Clear IndexedDB
   const db = await getDb();
   await db.clear(STORE_NAME);
-  
+
   // Clear localStorage cache
   localStorage.removeItem(PATHS_STORAGE_KEY);
 
