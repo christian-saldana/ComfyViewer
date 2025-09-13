@@ -1,11 +1,11 @@
 "use client";
 
 import { openDB, DBSchema } from 'idb';
-import { getMetadata } from 'meta-png';
+import { parseComfyUiMetadata } from './comfy-parser';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 9;
+const DB_VERSION = 10;
 
 // This is the object we'll work with in the application
 export interface StoredImage {
@@ -17,6 +17,14 @@ export interface StoredImage {
   size: number;
   thumbnail: string;
   workflow: string | null;
+  // Advanced metadata
+  prompt: string | null;
+  negativePrompt: string | null;
+  seed: string | null;
+  cfg: string | null;
+  steps: string | null;
+  sampler: string | null;
+  scheduler: string | null;
 }
 
 // This interface defines the shape of the data we'll store in IndexedDB.
@@ -28,6 +36,14 @@ interface StorableMetadata {
   thumbnail: string;
   size: number;
   workflow: string | null;
+  // Advanced metadata
+  prompt: string | null;
+  negativePrompt: string | null;
+  seed: string | null;
+  cfg: string | null;
+  steps: string | null;
+  sampler: string | null;
+  scheduler: string | null;
 }
 
 interface MyDB extends DBSchema {
@@ -40,6 +56,13 @@ interface MyDB extends DBSchema {
       'by-size': number;
       'by-name': string;
       'by-workflow': string;
+      'by-prompt': string;
+      'by-negativePrompt': string;
+      'by-seed': string;
+      'by-cfg': string;
+      'by-steps': string;
+      'by-sampler': string;
+      'by-scheduler': string;
     };
   };
 }
@@ -47,7 +70,7 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 9) {
+      if (oldVersion < 10) {
         if (db.objectStoreNames.contains(STORE_NAME)) {
           db.deleteObjectStore(STORE_NAME);
         }
@@ -57,6 +80,13 @@ async function getDb() {
         store.createIndex('by-size', 'size');
         store.createIndex('by-name', 'name');
         store.createIndex('by-workflow', 'workflow');
+        store.createIndex('by-prompt', 'prompt');
+        store.createIndex('by-negativePrompt', 'negativePrompt');
+        store.createIndex('by-seed', 'seed');
+        store.createIndex('by-cfg', 'cfg');
+        store.createIndex('by-steps', 'steps');
+        store.createIndex('by-sampler', 'sampler');
+        store.createIndex('by-scheduler', 'scheduler');
       }
     },
   });
@@ -82,16 +112,7 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
       await writable.write(file);
       await writable.close();
 
-      let workflow: string | null = null;
-      if (file.type === 'image/png') {
-        try {
-          const buffer = await file.arrayBuffer();
-          const pngBytes = new Uint8Array(buffer);
-          workflow = getMetadata(pngBytes, "workflow") || getMetadata(pngBytes, "prompt") || null;
-        } catch (e) {
-          console.warn(`Could not parse metadata for ${file.name}:`, e);
-        }
-      }
+      const comfyMetadata = await parseComfyUiMetadata(file);
 
       metadataChunk.push({
         name: file.name,
@@ -100,7 +121,14 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
         webkitRelativePath: file.webkitRelativePath,
         thumbnail: '',
         size: file.size,
-        workflow: workflow,
+        workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
+        prompt: comfyMetadata?.prompt ?? null,
+        negativePrompt: comfyMetadata?.negativePrompt ?? null,
+        seed: comfyMetadata ? String(comfyMetadata.seed) : null,
+        cfg: comfyMetadata ? String(comfyMetadata.cfg) : null,
+        steps: comfyMetadata ? String(comfyMetadata.steps) : null,
+        sampler: comfyMetadata?.sampler ?? null,
+        scheduler: comfyMetadata?.scheduler ?? null,
       });
 
       processedCount++;

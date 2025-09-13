@@ -11,6 +11,7 @@ import {
   ArrowDownWideNarrow,
   Trash2,
   Search,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,12 +44,24 @@ import {
 } from "@/components/ui/select";
 import { storeImages, clearImages, StoredImage, getStoredImageFile, getAllStoredImageMetadata } from "@/lib/image-db";
 import { Progress } from "@/components/ui/progress";
+import { AdvancedSearchForm, AdvancedSearchState } from "@/components/advanced-search-form";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
 
 const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96, 200];
 const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
+
+const initialAdvancedSearchState: AdvancedSearchState = {
+  prompt: "",
+  negativePrompt: "",
+  seed: "",
+  cfg: "",
+  steps: "",
+  sampler: "",
+  scheduler: "",
+};
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
@@ -66,6 +79,12 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+function checkMatch(value: string | null | undefined, query: string): boolean {
+  if (!query) return true;
+  if (value === null || value === undefined) return false;
+  return String(value).toLowerCase().includes(query.toLowerCase());
+}
+
 export default function Home() {
   const [allImageMetadata, setAllImageMetadata] = React.useState<StoredImage[]>([]);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
@@ -80,7 +99,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
   const [filterQuery, setFilterQuery] = React.useState("");
+  const [advancedSearchState, setAdvancedSearchState] = React.useState<AdvancedSearchState>(initialAdvancedSearchState);
+
   const debouncedFilterQuery = useDebounce(filterQuery, 300);
+  const debouncedAdvancedSearch = useDebounce(advancedSearchState, 300);
 
   const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
 
@@ -147,6 +169,21 @@ export default function Home() {
       });
     }
 
+    const isAdvancedSearchActive = Object.values(debouncedAdvancedSearch).some(v => v !== "");
+    if (isAdvancedSearchActive) {
+      filtered = filtered.filter(image => {
+        return (
+          checkMatch(image.prompt, debouncedAdvancedSearch.prompt) &&
+          checkMatch(image.negativePrompt, debouncedAdvancedSearch.negativePrompt) &&
+          checkMatch(image.seed, debouncedAdvancedSearch.seed) &&
+          checkMatch(image.cfg, debouncedAdvancedSearch.cfg) &&
+          checkMatch(image.steps, debouncedAdvancedSearch.steps) &&
+          checkMatch(image.sampler, debouncedAdvancedSearch.sampler) &&
+          checkMatch(image.scheduler, debouncedAdvancedSearch.scheduler)
+        );
+      });
+    }
+
     filtered.sort((a, b) => {
       const compareA = a[sortBy];
       const compareB = b[sortBy];
@@ -160,7 +197,7 @@ export default function Home() {
     });
 
     return filtered;
-  }, [allImageMetadata, selectedPath, viewSubfolders, debouncedFilterQuery, sortBy, sortOrder]);
+  }, [allImageMetadata, selectedPath, viewSubfolders, debouncedFilterQuery, debouncedAdvancedSearch, sortBy, sortOrder]);
 
   const totalPages = Math.ceil(processedImages.length / itemsPerPage);
 
@@ -172,7 +209,7 @@ export default function Home() {
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery]);
+  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery, debouncedAdvancedSearch]);
 
   React.useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -259,6 +296,14 @@ export default function Home() {
     if (panel) {
       panel.isCollapsed() ? panel.expand() : panel.collapse();
     }
+  };
+
+  const handleAdvancedSearchChange = (newState: Partial<AdvancedSearchState>) => {
+    setAdvancedSearchState(prev => ({ ...prev, ...newState }));
+  };
+
+  const handleAdvancedSearchReset = () => {
+    setAdvancedSearchState(initialAdvancedSearchState);
   };
 
   return (
@@ -404,6 +449,21 @@ export default function Home() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Advanced Search
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <AdvancedSearchForm
+                      searchState={advancedSearchState}
+                      onSearchChange={handleAdvancedSearchChange}
+                      onReset={handleAdvancedSearchReset}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
               <ScrollArea className="flex-1">
                 {fileTree ? (
