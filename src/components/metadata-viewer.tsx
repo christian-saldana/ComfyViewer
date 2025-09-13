@@ -28,9 +28,9 @@ interface MetadataViewerProps {
 interface ComfyMetadata {
   prompt: string;
   negativePrompt: string;
-  seed: number;
-  cfg: number;
-  steps: number;
+  seed: number | string;
+  cfg: number | string;
+  steps: number | string;
   sampler: string;
   scheduler: string;
   fullWorkflow: object;
@@ -48,7 +48,7 @@ const MetadataItem = ({
 }) => (
   <li>
     <p className="text-sm font-medium text-muted-foreground">{label}</p>
-    <p className={cn("break-all text-sm", valueClassName)}>{value}</p>
+    <p className={cn("break-words text-sm", valueClassName)}>{value}</p>
   </li>
 );
 
@@ -70,7 +70,6 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
     }
 
     // We only support PNG for ComfyUI metadata
-
     if (image.type !== "image/png") {
       setComfyMetadata(null);
       return;
@@ -78,84 +77,117 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
 
     const parseMetadata = async () => {
       setIsLoading(true);
+      setError(null);
+
+      // Helper to resolve a value, which might be a direct value or a link to another node's input.
+      const resolveValue = (workflow: any, input: any): any => {
+        if (!Array.isArray(input) || typeof input[0] !== 'string' || !workflow[input[0]]) {
+          return input; // It's a direct value
+        }
+        const sourceNode = workflow[input[0]];
+        if (sourceNode && sourceNode.inputs) {
+          // Common primitive node input names
+          if (sourceNode.inputs.value !== undefined) return sourceNode.inputs.value;
+          if (sourceNode.inputs._int !== undefined) return sourceNode.inputs._int;
+          if (sourceNode.inputs.float !== undefined) return sourceNode.inputs.float;
+          if (sourceNode.inputs.sampler_name !== undefined) return sourceNode.inputs.sampler_name;
+        }
+        return "N/A";
+      };
+
+      // Helper to trace back through links to find the ultimate text prompt.
+      const findPromptText = (workflow: any, startLink: any): string => {
+        let currentLink = startLink;
+        for (let i = 0; i < 10; i++) { // Safety break for circular dependencies
+          if (typeof currentLink === 'string') return currentLink;
+          if (!Array.isArray(currentLink) || typeof currentLink[0] !== 'string' || !workflow[currentLink[0]]) {
+            break;
+          }
+          const sourceNode = workflow[currentLink[0]];
+          if (!sourceNode || !sourceNode.inputs) break;
+          
+          // Found the text, return it
+          if (typeof sourceNode.inputs.text === 'string') return sourceNode.inputs.text;
+          // Some custom nodes use 'string'
+          if (typeof sourceNode.inputs.string === 'string') return sourceNode.inputs.string;
+
+          // Follow the link to the next node
+          currentLink = sourceNode.inputs.text || sourceNode.inputs.string;
+        }
+        return "N/A";
+      };
+
       try {
         const buffer = await image.arrayBuffer();
         const pngBytes = new Uint8Array(buffer);
         const promptText = getMetadata(pngBytes, "prompt");
 
         if (!promptText) {
-          setError("No ComfyUI workflow found in this PNG.");
+          setComfyMetadata(null); // No metadata, but not an error.
           return;
         }
 
-        // Find the start and end of the JSON object to clean up any extra characters
         const jsonStart = promptText.indexOf("{");
         const jsonEnd = promptText.lastIndexOf("}");
-
         if (jsonStart === -1 || jsonEnd === -1) {
           setError("Could not find a valid JSON workflow in the metadata.");
           return;
         }
 
-        let jsonString = promptText.substring(jsonStart, jsonEnd + 1);
-
-        // Sanitize the string to replace invalid JSON values like NaN
-        jsonString = jsonString.replace(/NaN/g, "null");
-        console.log('workflow')
+        let jsonString = promptText.substring(jsonStart, jsonEnd + 1).replace(/NaN/g, "null");
         const workflow = JSON.parse(jsonString);
 
         const ksamplerNodeEntry = Object.entries(workflow).find(
           ([, node]: [string, any]) =>
-            node.class_type === "KSampler" ||
-            node.class_type === "KSamplerAdvanced" ||
-            node.class_type === "SharkSampler_Beta"
+            ["KSampler", "KSamplerAdvanced", "SharkSampler_Beta"].includes(node.class_type)
         );
 
         if (!ksamplerNodeEntry) {
-          setError("Could not find a KSampler node in the workflow.");
+          // Can't find a sampler, but we can still show the full workflow JSON.
+          setComfyMetadata({
+            prompt: "N/A", negativePrompt: "N/A", seed: "N/A", cfg: "N/A",
+            steps: "N/A", sampler: "N/A", scheduler: "N/A", fullWorkflow: workflow,
+          });
           return;
         }
 
         const ksamplerNode = ksamplerNodeEntry[1] as any;
         const inputs = ksamplerNode.inputs;
 
-        // Find prompt nodes, which might be linked or directly embedded
-        const positivePromptNode = Object.values(workflow).find(
-          (node: any) =>
-            node._meta?.title?.toLowerCase().includes("positive prompt")
-        ) as any;
-        const negativePromptNode = Object.values(workflow).find(
-          (node: any) =>
-            node._meta?.title?.toLowerCase().includes("negative prompt")
-        ) as any;
+        let prompt = findPromptText(workflow, inputs.positive);
+        let negativePrompt = findPromptText(workflow, inputs.negative);
 
-        if (!positivePromptNode || !negativePromptNode) {
-          setError("Could not trace prompts from the workflow.");
-          return;
+        // Fallback to searching by title if tracing fails
+        if (prompt === "N/A") {
+          const positivePromptNode = Object.values(workflow).find(
+            (node: any) => node._meta?.title?.toLowerCase().includes("positive prompt")
+          ) as any;
+          if (positivePromptNode?.inputs?.text) {
+            prompt = findPromptText(workflow, positivePromptNode.inputs.text);
+          }
+        }
+        if (negativePrompt === "N/A") {
+          const negativePromptNode = Object.values(workflow).find(
+            (node: any) => node._meta?.title?.toLowerCase().includes("negative prompt")
+          ) as any;
+          if (negativePromptNode?.inputs?.text) {
+            negativePrompt = findPromptText(workflow, negativePromptNode.inputs.text);
+          }
         }
 
         const parsedData: ComfyMetadata = {
-          prompt: positivePromptNode.inputs.text,
-          negativePrompt: negativePromptNode.inputs.text,
-          seed: inputs.seed?.[0]
-            ? workflow[inputs.seed[0]]?.inputs.value
-            : inputs.seed,
-          cfg: inputs.cfg?.[0]
-            ? workflow[inputs.cfg[0]]?.inputs.value
-            : inputs.cfg,
-          steps: inputs.steps?.[0]
-            ? workflow[inputs.steps[0]]?.inputs._int
-            : inputs.steps,
-          sampler:
-            inputs.sampler_name ||
-            (inputs.sampler?.[0]
-              ? workflow[inputs.sampler[0]]?.inputs.sampler_name
-              : "N/A"),
-          scheduler: inputs.scheduler,
+          prompt: prompt,
+          negativePrompt: negativePrompt,
+          seed: resolveValue(workflow, inputs.seed) ?? "N/A",
+          cfg: resolveValue(workflow, inputs.cfg) ?? "N/A",
+          steps: resolveValue(workflow, inputs.steps) ?? "N/A",
+          sampler: resolveValue(workflow, inputs.sampler_name || inputs.sampler) ?? "N/A",
+          scheduler: resolveValue(workflow, inputs.scheduler) ?? "N/A",
           fullWorkflow: workflow,
         };
 
         setComfyMetadata(parsedData);
+
       } catch (e) {
         console.error("Failed to parse metadata:", e);
         setError("Failed to read or parse workflow. It might be malformed.");
@@ -227,7 +259,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                 </div>
               )}
               {error && !isLoading && (
-                <p className="text-sm text-muted-foreground">{error}</p>
+                <p className="text-sm text-destructive">{error}</p>
               )}
               {comfyMetadata && !isLoading && (
                 <>
@@ -242,12 +274,12 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                       value={comfyMetadata.negativePrompt}
                       valueClassName="leading-relaxed"
                     />
-                    <MetadataItem label="Seed" value={comfyMetadata.seed} />
+                    <MetadataItem label="Seed" value={String(comfyMetadata.seed)} />
                     <MetadataItem
                       label="CFG Scale"
-                      value={comfyMetadata.cfg}
+                      value={String(comfyMetadata.cfg)}
                     />
-                    <MetadataItem label="Steps" value={comfyMetadata.steps} />
+                    <MetadataItem label="Steps" value={String(comfyMetadata.steps)} />
                     <MetadataItem
                       label="Sampler"
                       value={comfyMetadata.sampler}
@@ -308,6 +340,9 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                     </DialogContent>
                   </Dialog>
                 </>
+              )}
+               {!comfyMetadata && !isLoading && !error && (
+                <p className="text-sm text-muted-foreground">No generator metadata found in this image.</p>
               )}
             </div>
           </>
