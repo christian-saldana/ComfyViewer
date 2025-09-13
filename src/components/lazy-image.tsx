@@ -20,6 +20,11 @@ export function LazyImage({ file, alt, className }: LazyImageProps) {
 
     const currentRef = placeholderRef.current;
     if (currentRef) {
+      // Find the parent ScrollArea viewport to use as the root for the observer.
+      // This ensures that images are loaded only when they scroll into the gallery's view,
+      // not just the main browser window's view.
+      const scrollParent = currentRef.closest('[data-radix-scroll-area-viewport]');
+
       observer = new IntersectionObserver(
         ([entry]) => {
           if (entry.isIntersecting) {
@@ -29,7 +34,9 @@ export function LazyImage({ file, alt, className }: LazyImageProps) {
           }
         },
         {
-          // Start loading images when they are 200px away from the viewport
+          // Use the found scroll parent as the root, or default to the browser viewport.
+          root: scrollParent,
+          // Start loading images when they are 200px away from the viewport.
           rootMargin: "200px",
         }
       );
@@ -41,7 +48,7 @@ export function LazyImage({ file, alt, className }: LazyImageProps) {
         observer.unobserve(currentRef);
       }
       if (objectUrl) {
-        // Revoke the object URL when the component unmounts to free up memory
+        // Revoke the object URL when the component unmounts to free up memory.
         URL.revokeObjectURL(objectUrl);
       }
     };
