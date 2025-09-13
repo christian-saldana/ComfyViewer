@@ -71,7 +71,7 @@ export function ImageGallery({
   const isSingleColumn = gridCols === 1;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <div className="flex-grow overflow-auto p-4 min-h-0">
         <div
           className="grid gap-4"

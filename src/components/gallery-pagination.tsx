@@ -71,7 +71,7 @@ export function GalleryPagination({
   const paginationItems = generatePagination(currentPage, totalPages);
 
   return (
-    <div className="flex items-center justify-between border-t p-2">
+    <div className="flex items-center justify-between border-t bg-background p-2">
       <div className="flex items-center gap-2">
         <Label htmlFor="items-per-page" className="text-sm text-muted-foreground">
           Per Page:
