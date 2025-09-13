@@ -387,34 +387,16 @@ export default function Home() {
           {!isLeftPanelCollapsed && (
             <div className="flex h-full flex-col">
               <div className="flex flex-col gap-4 border-b p-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Folders</h2>
-                  <div className="flex items-center gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button onClick={handleFolderSelectClick} size="icon" variant="outline" disabled={isLoading}>
-                            <Folder className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Select Folder</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button onClick={handleClearImages} size="icon" variant="outline" disabled={isLoading}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Clear Images</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                <h2 className="text-lg font-semibold">Folders</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={handleFolderSelectClick} variant="outline" disabled={isLoading}>
+                    <Folder className="mr-2 h-4 w-4" />
+                    Select Folder
+                  </Button>
+                  <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear All
+                  </Button>
                 </div>
                 <div className="relative">
                   <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -426,6 +408,21 @@ export default function Home() {
                     disabled={isLoading}
                   />
                 </div>
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Advanced Search
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <AdvancedSearchForm
+                      searchState={advancedSearchState}
+                      onSearchChange={handleAdvancedSearchChange}
+                      onReset={handleAdvancedSearchReset}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -449,21 +446,6 @@ export default function Home() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <SlidersHorizontal className="mr-2 h-4 w-4" />
-                      Advanced Search
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                    <AdvancedSearchForm
-                      searchState={advancedSearchState}
-                      onSearchChange={handleAdvancedSearchChange}
-                      onReset={handleAdvancedSearchReset}
-                    />
-                  </CollapsibleContent>
-                </Collapsible>
               </div>
               <ScrollArea className="flex-1">
                 {fileTree ? (
