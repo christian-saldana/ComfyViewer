@@ -5,6 +5,7 @@ import { openDB, DBSchema } from 'idb';
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
 const DB_VERSION = 6; // Incremented version for new indexes
+const PATHS_STORAGE_KEY = 'image-viewer-paths';
 
 // This is the object we'll work with in the application
 export interface StoredImage {
@@ -90,6 +91,9 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
       tx.done,
     ]);
   }
+
+  const paths = files.map(file => ({ webkitRelativePath: file.webkitRelativePath }));
+  localStorage.setItem(PATHS_STORAGE_KEY, JSON.stringify(paths));
 }
 
 export interface GetImagesParams {
@@ -146,16 +150,17 @@ export async function getPaginatedImages(params: GetImagesParams): Promise<Pagin
   return { images, totalCount };
 }
 
-export async function getAllImagePaths(): Promise<{ webkitRelativePath: string }[]> {
-    const db = await getDb();
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const paths: { webkitRelativePath: string }[] = [];
-    let cursor = await tx.store.openCursor();
-    while (cursor) {
-        paths.push({ webkitRelativePath: cursor.value.webkitRelativePath });
-        cursor = await cursor.continue();
+export function getStoredImagePaths(): { webkitRelativePath: string }[] {
+    const storedPaths = localStorage.getItem(PATHS_STORAGE_KEY);
+    if (storedPaths) {
+        try {
+            return JSON.parse(storedPaths);
+        } catch (e) {
+            console.error("Failed to parse stored paths from localStorage", e);
+            return [];
+        }
     }
-    return paths;
+    return [];
 }
 
 export async function getStoredImageFile(id: number): Promise<File | null> {
@@ -177,4 +182,5 @@ export async function getStoredImageFile(id: number): Promise<File | null> {
 export async function clearImages() {
   const db = await getDb();
   await db.clear(STORE_NAME);
+  localStorage.removeItem(PATHS_STORAGE_KEY);
 }

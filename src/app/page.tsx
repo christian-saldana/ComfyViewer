@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { storeImages, clearImages, StoredImage, getStoredImageFile, getPaginatedImages, getAllImagePaths } from "@/lib/image-db";
+import { storeImages, clearImages, StoredImage, getStoredImageFile, getPaginatedImages, getStoredImagePaths } from "@/lib/image-db";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
@@ -122,7 +122,7 @@ export default function Home() {
   React.useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
-      const paths = await getAllImagePaths();
+      const paths = getStoredImagePaths();
       setAllPaths(paths);
 
       if (paths.length > 0) {
@@ -180,17 +180,17 @@ export default function Home() {
       setProgress(0);
       await storeImages(imageFiles, (p) => setProgress(p));
 
-      const paths = await getAllImagePaths();
+      const paths = getStoredImagePaths();
       setAllPaths(paths);
       setSelectedImageId(null);
-      
+
       const newTree = buildFileTree(imageFiles);
       const newPath = newTree ? newTree.path : "";
       setSelectedPath(newPath);
-      
+
       setCurrentPage(1);
       await fetchPaginatedData(newPath, 1);
-      
+
       setIsLoading(false);
     }
   };
