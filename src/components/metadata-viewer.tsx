@@ -48,7 +48,7 @@ const MetadataItem = ({
 }) => (
   <li>
     <p className="text-sm font-medium text-muted-foreground">{label}</p>
-    <p className={cn("break-words text-sm", valueClassName)}>{value}</p>
+    <p className={cn("break-all text-sm", valueClassName)}>{value}</p>
   </li>
 );
 
@@ -277,7 +277,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                       </div>
                       <AccordionContent>
                         <ScrollArea className="h-64 w-full resize-y overflow-auto rounded-md border bg-muted/50 p-2">
-                          <pre className="text-xs">
+                          <pre className="text-xs whitespace-pre-wrap break-all">
                             {JSON.stringify(
                               comfyMetadata.fullWorkflow,
                               null,
@@ -297,7 +297,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                         <DialogTitle>Full Workflow (JSON)</DialogTitle>
                       </DialogHeader>
                       <ScrollArea className="flex-1 rounded-md border bg-muted/50 p-2">
-                        <pre className="text-xs">
+                        <pre className="text-xs whitespace-pre-wrap break-all">
                           {JSON.stringify(
                             comfyMetadata.fullWorkflow,
                             null,
