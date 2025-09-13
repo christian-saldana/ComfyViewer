@@ -3,10 +3,6 @@
 import * as React from "react";
 import {
   Folder,
-  PanelLeftClose,
-  PanelRightClose,
-  PanelLeftOpen,
-  PanelRightOpen,
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Trash2,
@@ -100,8 +96,6 @@ export default function Home() {
   const [progress, setProgress] = React.useState(0);
   const [filterQuery, setFilterQuery] = React.useState("");
   const [advancedSearchState, setAdvancedSearchState] = React.useState<AdvancedSearchState>(initialAdvancedSearchState);
-  const [layout, setLayout] = React.useState([20, 55, 25]);
-  const [containerWidth, setContainerWidth] = React.useState(0);
 
   const debouncedFilterQuery = useDebounce(filterQuery, 300);
   const debouncedAdvancedSearch = useDebounce(advancedSearchState, 300);
@@ -301,20 +295,6 @@ export default function Home() {
     fileInputRef.current?.click();
   };
 
-  const toggleLeftPanel = () => {
-    const panel = leftPanelRef.current;
-    if (panel) {
-      panel.isCollapsed() ? panel.expand() : panel.collapse();
-    }
-  };
-
-  const toggleRightPanel = () => {
-    const panel = rightPanelRef.current;
-    if (panel) {
-      panel.isCollapsed() ? panel.expand() : panel.collapse();
-    }
-  };
-
   const handleAdvancedSearchChange = (newState: Partial<AdvancedSearchState>) => {
     setAdvancedSearchState(prev => ({ ...prev, ...newState }));
   };
@@ -322,12 +302,6 @@ export default function Home() {
   const handleAdvancedSearchReset = () => {
     setAdvancedSearchState(initialAdvancedSearchState);
   };
-
-  const leftPanelPx = (layout[0] / 100) * containerWidth;
-  const rightPanelPx = (layout[2] / 100) * containerWidth;
-
-  const showLeftPanelContent = leftPanelPx >= 250;
-  const showRightPanelContent = rightPanelPx >= 250;
 
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
@@ -396,132 +370,131 @@ export default function Home() {
         />
       </header>
 
-      <div ref={panelGroupContainerRef} className="h-full w-full">
-        <ResizablePanelGroup
-          direction="horizontal"
-          onLayout={(sizes: number[]) => setLayout(sizes)}
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="w-full"
+      >
+        <ResizablePanel
+          ref={leftPanelRef}
+          defaultSize={20}
+          minSize={15}
+          maxSize={40}
+          collapsible
+          collapsedSize={4}
+          onCollapse={() => setIsLeftPanelCollapsed(true)}
+          onExpand={() => setIsLeftPanelCollapsed(false)}
         >
-          <ResizablePanel
-            ref={leftPanelRef}
-            defaultSize={layout[0]}
-            minSize={4}
-            collapsible
-            collapsedSize={4}
-            onCollapse={() => setIsLeftPanelCollapsed(true)}
-            onExpand={() => setIsLeftPanelCollapsed(false)}
-          >
-            {!isLeftPanelCollapsed && showLeftPanelContent && (
-              <div className="flex h-full flex-col">
-                <div className="border-b p-4">
-                  <div className="w-full max-w-sm space-y-4">
-                    <h2 className="text-lg font-semibold">Folders</h2>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button onClick={handleFolderSelectClick} variant="outline" disabled={isLoading}>
-                        <Folder className="mr-2 h-4 w-4" />
-                        Select Folder
-                      </Button>
-                      <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Clear All
-                      </Button>
-                    </div>
-                    <div className="relative">
-                      <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Filter by name or metadata..."
-                        className="pl-8"
-                        value={filterQuery}
-                        onChange={(e) => setFilterQuery(e.target.value)}
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full">
-                          <SlidersHorizontal className="mr-2 h-4 w-4" />
-                          Advanced Search
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-4">
-                        <AdvancedSearchForm
-                          searchState={advancedSearchState}
-                          onSearchChange={handleAdvancedSearchChange}
-                          onReset={handleAdvancedSearchReset}
-                        />
-                      </CollapsibleContent>
-                    </Collapsible>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="view-subfolders"
-                              checked={viewSubfolders}
-                              onCheckedChange={setViewSubfolders}
-                              disabled={isLoading}
-                            />
-                            <Label
-                              htmlFor="view-subfolders"
-                              className="cursor-pointer text-sm"
-                            >
-                              View Subfolders
-                            </Label>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Show images from all subfolders.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+          {!isLeftPanelCollapsed && (
+            <div className="flex h-full flex-col">
+              <div className="border-b p-4">
+                <div className="w-full max-w-sm space-y-4">
+                  <h2 className="text-lg font-semibold">Folders</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={handleFolderSelectClick} variant="outline" disabled={isLoading}>
+                      <Folder className="mr-2 h-4 w-4" />
+                      Select Folder
+                    </Button>
+                    <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Clear All
+                    </Button>
                   </div>
-                </div>
-                <ScrollArea className="flex-1">
-                  {fileTree ? (
-                    <FileTree
-                      tree={fileTree}
-                      selectedPath={selectedPath}
-                      onSelectPath={handleFolderSelect}
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Filter by name or metadata..."
+                      className="pl-8"
+                      value={filterQuery}
+                      onChange={(e) => setFilterQuery(e.target.value)}
+                      disabled={isLoading}
                     />
-                  ) : (
-                    <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
-                      Select a folder to view its structure.
-                    </div>
-                  )}
-                </ScrollArea>
+                  </div>
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        <SlidersHorizontal className="mr-2 h-4 w-4" />
+                        Advanced Search
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-4">
+                      <AdvancedSearchForm
+                        searchState={advancedSearchState}
+                        onSearchChange={handleAdvancedSearchChange}
+                        onReset={handleAdvancedSearchReset}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="view-subfolders"
+                            checked={viewSubfolders}
+                            onCheckedChange={setViewSubfolders}
+                            disabled={isLoading}
+                          />
+                          <Label
+                            htmlFor="view-subfolders"
+                            className="cursor-pointer text-sm"
+                          >
+                            View Subfolders
+                          </Label>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Show images from all subfolders.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
-            )}
-          </ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel defaultSize={layout[1]}>
-            <ImageGallery
-              files={paginatedFiles}
-              selectedImageId={selectedImageId}
-              onSelectImage={setSelectedImageId}
-              gridCols={gridCols}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={setItemsPerPage}
-              itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
-            />
-          </ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel
-            ref={rightPanelRef}
-            defaultSize={layout[2]}
-            minSize={4}
-            collapsible
-            collapsedSize={4}
-            onCollapse={() => setIsRightPanelCollapsed(true)}
-            onExpand={() => setIsRightPanelCollapsed(false)}
-          >
-            {!isRightPanelCollapsed && showRightPanelContent && (
-              <MetadataViewer imageFile={selectedImageFile} imageMetadata={selectedImageMetadata} />
-            )}
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
+              <ScrollArea className="flex-1">
+                {fileTree ? (
+                  <FileTree
+                    tree={fileTree}
+                    selectedPath={selectedPath}
+                    onSelectPath={handleFolderSelect}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
+                    Select a folder to view its structure.
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          )}
+        </ResizablePanel>
+        <ResizableHandle />
+        <ResizablePanel defaultSize={55}>
+          <ImageGallery
+            files={paginatedFiles}
+            selectedImageId={selectedImageId}
+            onSelectImage={setSelectedImageId}
+            gridCols={gridCols}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
+          />
+        </ResizablePanel>
+        <ResizableHandle />
+        <ResizablePanel
+          ref={rightPanelRef}
+          defaultSize={25}
+          minSize={4}
+          collapsible
+          collapsedSize={4}
+          onCollapse={() => setIsRightPanelCollapsed(true)}
+          onExpand={() => setIsRightPanelCollapsed(false)}
+        >
+          {!isRightPanelCollapsed && (
+            <MetadataViewer imageFile={selectedImageFile} imageMetadata={selectedImageMetadata} />
+          )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

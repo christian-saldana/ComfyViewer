@@ -72,8 +72,8 @@ export function ImageGallery({
 
   return (
     <>
-      <div className="relative h-full">
-        <div className="h-full overflow-y-auto p-4 pb-20">
+      <div className="flex h-full flex-col">
+        <div className="flex-grow overflow-auto p-4">
           <div
             className="grid gap-4"
             style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
@@ -109,16 +109,14 @@ export function ImageGallery({
           </div>
         </div>
         {showPagination && (
-          <div className="absolute bottom-0 left-0 w-full">
-            <GalleryPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={onItemsPerPageChange}
-              itemsPerPageOptions={itemsPerPageOptions}
-            />
-          </div>
+          <GalleryPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={onItemsPerPageChange}
+            itemsPerPageOptions={itemsPerPageOptions}
+          />
         )}
       </div>
       <ImageViewerDialog
