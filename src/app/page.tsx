@@ -26,6 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
+
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
@@ -79,22 +80,6 @@ export default function Home() {
   const MAX_COLS = 12;
 
   React.useEffect(() => {
-    async function loadInitialData() {
-      setIsLoading(true);
-      const paths = await getAllImagePaths();
-      if (paths.length > 0) {
-        setAllPaths(paths);
-        const tree = buildFileTree(paths as any);
-        if (tree && !selectedPath) {
-          setSelectedPath(tree.path);
-        }
-      }
-      setIsLoading(false);
-    }
-    loadInitialData();
-  }, []);
-
-  React.useEffect(() => {
     const storedItemsPerPage = localStorage.getItem(ITEMS_PER_PAGE_KEY);
     if (storedItemsPerPage) {
       const parsedValue = parseInt(storedItemsPerPage, 10);
@@ -112,35 +97,50 @@ export default function Home() {
     return buildFileTree(allPaths as File[]);
   }, [allPaths]);
 
+  const fetchPaginatedData = React.useCallback(async (path: string, page: number) => {
+    if (!path) return;
+
+    setIsLoading(true);
+    const response = await getPaginatedImages({
+      page,
+      itemsPerPage,
+      sortBy,
+      sortOrder,
+      filterPath: path,
+      viewSubfolders,
+    });
+
+    setPaginatedFiles(response.images);
+    setTotalImageCount(response.totalCount);
+    const newTotalPages = Math.ceil(response.totalCount / itemsPerPage);
+    if (page > newTotalPages && newTotalPages > 0) {
+      setCurrentPage(newTotalPages);
+    }
+    setIsLoading(false);
+  }, [itemsPerPage, sortBy, sortOrder, viewSubfolders]);
+
   React.useEffect(() => {
-    if (!selectedPath) return;
-
-    let isCancelled = false;
-    async function fetchPage() {
+    async function loadInitialData() {
       setIsLoading(true);
-      const response = await getPaginatedImages({
-        page: currentPage,
-        itemsPerPage,
-        sortBy,
-        sortOrder,
-        filterPath: selectedPath,
-        viewSubfolders,
-      });
+      const paths = await getAllImagePaths();
+      setAllPaths(paths);
 
-      if (!isCancelled) {
-        setPaginatedFiles(response.images);
-        setTotalImageCount(response.totalCount);
-        const newTotalPages = Math.ceil(response.totalCount / itemsPerPage);
-        if (currentPage > newTotalPages && newTotalPages > 0) {
-          setCurrentPage(newTotalPages);
-        }
+      if (paths.length > 0) {
+        const tree = buildFileTree(paths as any);
+        const initialPath = tree ? tree.path : "";
+        setSelectedPath(initialPath);
+        await fetchPaginatedData(initialPath, 1);
       }
       setIsLoading(false);
     }
+    loadInitialData();
+  }, [fetchPaginatedData]);
 
-    fetchPage();
-    return () => { isCancelled = true; };
-  }, [currentPage, itemsPerPage, sortBy, sortOrder, selectedPath, viewSubfolders]);
+  React.useEffect(() => {
+    if (selectedPath) {
+      fetchPaginatedData(selectedPath, currentPage);
+    }
+  }, [currentPage, fetchPaginatedData, selectedPath]);
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -169,8 +169,6 @@ export default function Home() {
     setGridCols(newGridCols);
   };
 
-
-
   const sliderValue = MAX_COLS + MIN_COLS - gridCols;
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,10 +183,14 @@ export default function Home() {
       const paths = await getAllImagePaths();
       setAllPaths(paths);
       setSelectedImageId(null);
-      setCurrentPage(1);
-
+      
       const newTree = buildFileTree(imageFiles);
-      setSelectedPath(newTree ? newTree.path : "");
+      const newPath = newTree ? newTree.path : "";
+      setSelectedPath(newPath);
+      
+      setCurrentPage(1);
+      await fetchPaginatedData(newPath, 1);
+      
       setIsLoading(false);
     }
   };
