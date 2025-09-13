@@ -205,7 +205,7 @@ export default function Home() {
       const compareA = a[sortBy];
       const compareB = b[sortBy];
       if (compareA === compareB) return 0;
-      
+
       if (sortOrder === 'asc') {
         return compareA > compareB ? 1 : -1;
       } else {
@@ -492,7 +492,7 @@ export default function Home() {
               </div>
             )}
           </ResizablePanel>
-          <ResizableHandle withHandle />
+          <ResizableHandle hitAreaMargins={{ "coarse": 15, "fine": 15 }} />
           <ResizablePanel defaultSize={layout[1]}>
             <ImageGallery
               files={paginatedFiles}
@@ -507,7 +507,7 @@ export default function Home() {
               itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
             />
           </ResizablePanel>
-          <ResizableHandle withHandle />
+          <ResizableHandle hitAreaMargins={{ "coarse": 15, "fine": 15 }} />
           <ResizablePanel
             ref={rightPanelRef}
             defaultSize={layout[2]}

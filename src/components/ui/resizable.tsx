@@ -20,11 +20,9 @@ const ResizablePanelGroup = ({
 const ResizablePanel = ResizablePrimitive.Panel
 
 const ResizableHandle = ({
-  withHandle,
   className,
   ...props
 }: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
-  withHandle?: boolean
 }) => (
   <ResizablePrimitive.PanelResizeHandle
     className={cn(
@@ -33,11 +31,6 @@ const ResizableHandle = ({
     )}
     {...props}
   >
-    {withHandle && (
-      <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
-        <div className="h-2.5 w-px bg-muted-foreground" />
-      </div>
-    )}
   </ResizablePrimitive.PanelResizeHandle>
 )
 
