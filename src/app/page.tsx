@@ -10,6 +10,7 @@ import {
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
   Trash2,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,19 +22,18 @@ import {
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
 import { FileTree } from "@/components/file-tree";
-import { buildFileTree, FileTreeNode } from "@/lib/file-tree";
+import { buildFileTree } from "@/lib/file-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
-
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -41,9 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { storeImages, clearImages, StoredImage, getStoredImageFile, getPaginatedImages, getStoredImagePaths } from "@/lib/image-db";
+import { storeImages, clearImages, StoredImage, getStoredImageFile, getAllStoredImageMetadata } from "@/lib/image-db";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
@@ -51,11 +50,24 @@ type SortOrder = "asc" | "desc";
 const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96, 200];
 const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
 
-export default function Home() {
-  const [allPaths, setAllPaths] = React.useState<{ webkitRelativePath: string }[]>([]);
-  const [paginatedFiles, setPaginatedFiles] = React.useState<StoredImage[]>([]);
-  const [totalImageCount, setTotalImageCount] = React.useState(0);
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
 
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+export default function Home() {
+  const [allImageMetadata, setAllImageMetadata] = React.useState<StoredImage[]>([]);
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImageId, setSelectedImageId] = React.useState<number | null>(null);
   const [selectedImageFile, setSelectedImageFile] = React.useState<File | null>(null);
@@ -66,6 +78,8 @@ export default function Home() {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
+  const [filterQuery, setFilterQuery] = React.useState("");
+  const debouncedFilterQuery = useDebounce(filterQuery, 300);
 
   const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
 
@@ -93,60 +107,77 @@ export default function Home() {
     localStorage.setItem(ITEMS_PER_PAGE_KEY, String(itemsPerPage));
   }, [itemsPerPage]);
 
-  const fileTree = React.useMemo(() => {
-    return buildFileTree(allPaths as File[]);
-  }, [allPaths]);
-
-  const fetchPaginatedData = React.useCallback(async (path: string, page: number) => {
-    if (!path) return;
-
-    setIsLoading(true);
-    console.log('here')
-    const response = await getPaginatedImages({
-      page,
-      itemsPerPage,
-      sortBy,
-      sortOrder,
-      filterPath: path,
-      viewSubfolders,
-    });
-    console.log('here2')
-
-    setPaginatedFiles(response.images);
-    setTotalImageCount(response.totalCount);
-    const newTotalPages = Math.ceil(response.totalCount / itemsPerPage);
-    if (page > newTotalPages && newTotalPages > 0) {
-      setCurrentPage(newTotalPages);
-    }
-    setIsLoading(false);
-  }, [itemsPerPage, sortBy, sortOrder, viewSubfolders]);
-
   React.useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
-      const paths = getStoredImagePaths();
-      setAllPaths(paths);
+      const metadata = await getAllStoredImageMetadata();
+      setAllImageMetadata(metadata);
 
-      if (paths.length > 0) {
-        const tree = buildFileTree(paths as any);
+      if (metadata.length > 0) {
+        const tree = buildFileTree(metadata as any);
         const initialPath = tree ? tree.path : "";
         setSelectedPath(initialPath);
-        await fetchPaginatedData(initialPath, 1);
       }
       setIsLoading(false);
     }
     loadInitialData();
-  }, [fetchPaginatedData]);
+  }, []);
 
-  React.useEffect(() => {
-    if (selectedPath) {
-      fetchPaginatedData(selectedPath, currentPage);
+  const fileTree = React.useMemo(() => {
+    return buildFileTree(allImageMetadata as any);
+  }, [allImageMetadata]);
+
+  const processedImages = React.useMemo(() => {
+    if (!selectedPath) return [];
+
+    let filtered = allImageMetadata.filter(image => {
+      const parentDirectory = image.webkitRelativePath.substring(0, image.webkitRelativePath.lastIndexOf("/"));
+      return viewSubfolders
+        ? image.webkitRelativePath.startsWith(selectedPath)
+        : parentDirectory === selectedPath;
+    });
+
+    if (debouncedFilterQuery) {
+      const lowerCaseQuery = debouncedFilterQuery.toLowerCase();
+      filtered = filtered.filter(image => {
+        const nameMatch = image.name.toLowerCase().includes(lowerCaseQuery);
+        const workflowMatch = image.workflow ? image.workflow.toLowerCase().includes(lowerCaseQuery) : false;
+        return nameMatch || workflowMatch;
+      });
     }
-  }, [currentPage, fetchPaginatedData, selectedPath]);
+
+    filtered.sort((a, b) => {
+      const compareA = a[sortBy];
+      const compareB = b[sortBy];
+      if (compareA === compareB) return 0;
+      
+      if (sortOrder === 'asc') {
+        return compareA > compareB ? 1 : -1;
+      } else {
+        return compareA < compareB ? 1 : -1;
+      }
+    });
+
+    return filtered;
+  }, [allImageMetadata, selectedPath, viewSubfolders, debouncedFilterQuery, sortBy, sortOrder]);
+
+  const totalPages = Math.ceil(processedImages.length / itemsPerPage);
+
+  const paginatedFiles = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return processedImages.slice(startIndex, endIndex);
+  }, [processedImages, currentPage, itemsPerPage]);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage]);
+  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery]);
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   React.useEffect(() => {
     if (selectedImageId === null) {
@@ -164,8 +195,6 @@ export default function Home() {
     return () => { isCancelled = true; };
   }, [selectedImageId]);
 
-  const totalPages = Math.ceil(totalImageCount / itemsPerPage);
-
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
     setGridCols(newGridCols);
@@ -182,26 +211,22 @@ export default function Home() {
       setProgress(0);
       await storeImages(imageFiles, (p) => setProgress(p));
 
-      const paths = getStoredImagePaths();
-      setAllPaths(paths);
+      const metadata = await getAllStoredImageMetadata();
+      setAllImageMetadata(metadata);
       setSelectedImageId(null);
 
-      const newTree = buildFileTree(imageFiles);
+      const newTree = buildFileTree(metadata as any);
       const newPath = newTree ? newTree.path : "";
       setSelectedPath(newPath);
 
       setCurrentPage(1);
-      await fetchPaginatedData(newPath, 1);
-
       setIsLoading(false);
     }
   };
 
   const handleClearImages = async () => {
     await clearImages();
-    setAllPaths([]);
-    setPaginatedFiles([]);
-    setTotalImageCount(0);
+    setAllImageMetadata([]);
     setSelectedPath("");
     setSelectedImageId(null);
     setCurrentPage(1);
@@ -235,7 +260,7 @@ export default function Home() {
       <header className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold">Image Viewer</h1>
-          {isLoading && (
+          {isLoading && progress > 0 && progress < 100 && (
             <div className="flex w-48 items-center gap-2">
               <Progress value={progress} className="w-full" />
               <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
@@ -301,7 +326,8 @@ export default function Home() {
         <ResizablePanel
           ref={leftPanelRef}
           defaultSize={20}
-          minSize={4}
+          minSize={15}
+          maxSize={40}
           collapsible
           collapsedSize={4}
           onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -309,58 +335,69 @@ export default function Home() {
         >
           {!isLeftPanelCollapsed && (
             <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b p-4">
-                <h2 className="text-lg font-semibold">Folders</h2>
-                <div className="flex items-center gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button onClick={handleFolderSelectClick} size="icon" variant="outline" disabled={isLoading}>
-                          <Folder className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Select Folder</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button onClick={handleClearImages} size="icon" variant="outline" disabled={isLoading}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Clear Images</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <Separator orientation="vertical" className="mx-1 h-6" />
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="view-subfolders"
-                            checked={viewSubfolders}
-                            onCheckedChange={setViewSubfolders}
-                            disabled={isLoading}
-                          />
-                          <Label
-                            htmlFor="view-subfolders"
-                            className="cursor-pointer text-sm"
-                          >
-                            Subfolders
-                          </Label>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Show images from all subfolders.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+              <div className="flex flex-col gap-4 border-b p-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Folders</h2>
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button onClick={handleFolderSelectClick} size="icon" variant="outline" disabled={isLoading}>
+                            <Folder className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Select Folder</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button onClick={handleClearImages} size="icon" variant="outline" disabled={isLoading}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Clear Images</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter by name or metadata..."
+                    className="pl-8"
+                    value={filterQuery}
+                    onChange={(e) => setFilterQuery(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="view-subfolders"
+                          checked={viewSubfolders}
+                          onCheckedChange={setViewSubfolders}
+                          disabled={isLoading}
+                        />
+                        <Label
+                          htmlFor="view-subfolders"
+                          className="cursor-pointer text-sm"
+                        >
+                          View Subfolders
+                        </Label>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Show images from all subfolders.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <ScrollArea className="flex-1">
                 {fileTree ? (
@@ -441,7 +478,8 @@ export default function Home() {
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={25}
-          minSize={4}
+          minSize={15}
+          maxSize={40}
           collapsible
           collapsedSize={4}
           onCollapse={() => setIsRightPanelCollapsed(true)}
