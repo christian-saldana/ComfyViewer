@@ -377,8 +377,7 @@ export default function Home() {
         <ResizablePanel
           ref={leftPanelRef}
           defaultSize={20}
-          minSize={15}
-          maxSize={40}
+          minSize={4}
           collapsible
           collapsedSize={4}
           onCollapse={() => setIsLeftPanelCollapsed(true)}

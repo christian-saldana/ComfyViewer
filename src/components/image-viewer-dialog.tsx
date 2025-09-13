@@ -33,9 +33,6 @@ export function ImageViewerDialog({
             className="max-h-full max-w-full object-contain"
           />
         )}
-        <DialogClose className="absolute top-4 right-4 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors">
-          <X className="h-6 w-6" />
-        </DialogClose>
       </DialogContent>
     </Dialog>
   );

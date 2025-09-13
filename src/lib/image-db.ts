@@ -100,7 +100,7 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
 
   let processedCount = 0;
   const totalFiles = files.length;
-  const CHUNK_SIZE = 100;
+  const CHUNK_SIZE = 500;
 
   for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
     const chunk = files.slice(i, i + CHUNK_SIZE);
@@ -146,16 +146,16 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
 }
 
 export async function getAllStoredImageMetadata(): Promise<StoredImage[]> {
-    const db = await getDb();
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.store;
-    const images: StoredImage[] = [];
-    let cursor = await store.openCursor();
-    while (cursor) {
-        images.push({ ...cursor.value, id: cursor.primaryKey });
-        cursor = await cursor.continue();
-    }
-    return images;
+  const db = await getDb();
+  const tx = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.store;
+  const images: StoredImage[] = [];
+  let cursor = await store.openCursor();
+  while (cursor) {
+    images.push({ ...cursor.value, id: cursor.primaryKey });
+    cursor = await cursor.continue();
+  }
+  return images;
 }
 
 export async function getStoredImageFile(id: number): Promise<File | null> {
