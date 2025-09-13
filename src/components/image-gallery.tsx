@@ -57,13 +57,22 @@ export function ImageGallery({
 
   const rowCount = Math.ceil(files.length / gridCols);
   const columnCount = gridCols;
+  const isSingleColumn = columnCount === 1;
+  const gap = 16; // Corresponds to gap-4 in Tailwind
 
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (parentRef.current ? (parentRef.current.offsetWidth - 32) / columnCount : 250),
+    estimateSize: () => {
+      if (!parentRef.current) return 250;
+      // Calculate the width of a single image
+      // Total width - total gap space / number of columns
+      const imageWidth = (parentRef.current.clientWidth - (columnCount - 1) * gap) / columnCount;
+      // In aspect-square, height equals width.
+      return isSingleColumn ? 300 : imageWidth;
+    },
     overscan: 3,
-    gap: 16,
+    gap,
   });
 
   if (files.length === 0) {
@@ -79,7 +88,6 @@ export function ImageGallery({
   }
 
   const showPagination = totalPages >= 1;
-  const isSingleColumn = columnCount === 1;
 
   return (
     <div className="flex h-full flex-col">
@@ -108,7 +116,7 @@ export function ImageGallery({
                     transform: `translateY(${virtualRow.start}px)`,
                     display: "grid",
                     gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-                    gap: "1rem",
+                    gap: `${gap}px`,
                   }}
                 >
                   {itemsInRow.map((image) => (
