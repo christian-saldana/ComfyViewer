@@ -20,9 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { StoredImage } from "@/lib/image-db";
 
 interface MetadataViewerProps {
-  image: File | null;
+  imageFile: File | null;
+  imageMetadata: StoredImage | null;
 }
 
 interface ComfyMetadata {
@@ -52,7 +54,7 @@ const MetadataItem = ({
   </li>
 );
 
-export function MetadataViewer({ image }: MetadataViewerProps) {
+export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps) {
   const [comfyMetadata, setComfyMetadata] =
     React.useState<ComfyMetadata | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -65,12 +67,12 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
     setError(null);
     setIsLoading(false);
 
-    if (!image) {
+    if (!imageFile) {
       return;
     }
 
     // We only support PNG for ComfyUI metadata
-    if (image.type !== "image/png") {
+    if (imageFile.type !== "image/png") {
       setComfyMetadata(null);
       return;
     }
@@ -118,7 +120,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
       };
 
       try {
-        const buffer = await image.arrayBuffer();
+        const buffer = await imageFile.arrayBuffer();
         const pngBytes = new Uint8Array(buffer);
         const promptText = getMetadata(pngBytes, "prompt");
 
@@ -197,9 +199,9 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
     };
 
     parseMetadata();
-  }, [image]);
+  }, [imageFile]);
 
-  if (!image) {
+  if (!imageMetadata) {
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b p-4">
@@ -215,12 +217,12 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
   }
 
   const basicMetadata = [
-    { label: "File Name", value: image.name },
-    { label: "File Size", value: `${(image.size / 1024).toFixed(2)} KB` },
-    { label: "File Type", value: image.type },
+    { label: "File Name", value: imageMetadata.name },
+    { label: "File Size", value: `${(imageMetadata.size / 1024).toFixed(2)} KB` },
+    { label: "File Type", value: imageMetadata.type },
     {
       label: "Last Modified",
-      value: new Date(image.lastModified).toLocaleString(),
+      value: new Date(imageMetadata.lastModified).toLocaleString(),
     },
   ];
 
@@ -243,7 +245,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
           </ul>
         </div>
 
-        {image.type === "image/png" && (
+        {imageMetadata.type === "image/png" && (
           <>
             <Separator />
             <div className="p-4">

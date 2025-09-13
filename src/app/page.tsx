@@ -71,6 +71,7 @@ export default function Home() {
   const [selectedPath, setSelectedPath] = React.useState<string>("");
   const [selectedImageId, setSelectedImageId] = React.useState<number | null>(null);
   const [selectedImageFile, setSelectedImageFile] = React.useState<File | null>(null);
+  const [selectedImageMetadata, setSelectedImageMetadata] = React.useState<StoredImage | null>(null);
   const [viewSubfolders, setViewSubfolders] = React.useState(false);
   const [gridCols, setGridCols] = React.useState(4);
   const [sortBy, setSortBy] = React.useState<SortBy>("lastModified");
@@ -182,8 +183,13 @@ export default function Home() {
   React.useEffect(() => {
     if (selectedImageId === null) {
       setSelectedImageFile(null);
+      setSelectedImageMetadata(null);
       return;
     }
+
+    const metadata = allImageMetadata.find(img => img.id === selectedImageId);
+    setSelectedImageMetadata(metadata || null);
+
     let isCancelled = false;
     async function fetchFile() {
       const file = await getStoredImageFile(selectedImageId!);
@@ -193,7 +199,7 @@ export default function Home() {
     }
     fetchFile();
     return () => { isCancelled = true; };
-  }, [selectedImageId]);
+  }, [selectedImageId, allImageMetadata]);
 
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
@@ -485,7 +491,7 @@ export default function Home() {
           onCollapse={() => setIsRightPanelCollapsed(true)}
           onExpand={() => setIsRightPanelCollapsed(false)}
         >
-          {!isRightPanelCollapsed && <MetadataViewer image={selectedImageFile} />}
+          {!isRightPanelCollapsed && <MetadataViewer imageFile={selectedImageFile} imageMetadata={selectedImageMetadata} />}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
