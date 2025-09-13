@@ -67,12 +67,12 @@ export function ImageGallery({
     );
   }
 
-  const showPagination = totalPages >= 1;
+  const showPagination = totalPages > 1;
   const isSingleColumn = gridCols === 1;
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-grow overflow-auto p-4">
+      <div className="flex-grow overflow-auto p-4 min-h-0">
         <div
           className="grid gap-4"
           style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
