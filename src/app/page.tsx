@@ -101,6 +101,7 @@ export default function Home() {
     if (!path) return;
 
     setIsLoading(true);
+    console.log('here')
     const response = await getPaginatedImages({
       page,
       itemsPerPage,
@@ -109,6 +110,7 @@ export default function Home() {
       filterPath: path,
       viewSubfolders,
     });
+    console.log('here2')
 
     setPaginatedFiles(response.images);
     setTotalImageCount(response.totalCount);
