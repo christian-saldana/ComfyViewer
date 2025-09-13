@@ -77,7 +77,7 @@ export function ImageGallery({
     );
   }
 
-  const showPagination = totalPages > 1;
+  const showPagination = totalPages >= 1;
   const isSingleColumn = columnCount === 1;
 
   return (
