@@ -34,13 +34,15 @@ export function ImageGallery({
   itemsPerPageOptions,
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
+  const [fullscreenImageAlt, setFullscreenImageAlt] = React.useState("");
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
-  const handleDoubleClick = async (id: number) => {
-    const file = await getStoredImageFile(id);
+  const handleDoubleClick = async (image: StoredImage) => {
+    const file = await getStoredImageFile(image.id);
     if (file) {
       const objectUrl = URL.createObjectURL(file);
       setFullscreenImageSrc(objectUrl);
+      setFullscreenImageAlt(image.name);
       setIsViewerOpen(true);
     }
   };
@@ -49,6 +51,7 @@ export function ImageGallery({
     if (!isViewerOpen && fullscreenImageSrc) {
       URL.revokeObjectURL(fullscreenImageSrc);
       setFullscreenImageSrc(null);
+      setFullscreenImageAlt("");
     }
   }, [isViewerOpen, fullscreenImageSrc]);
 
@@ -85,7 +88,7 @@ export function ImageGallery({
                 !isSingleColumn && "aspect-square"
               )}
               onClick={() => onSelectImage(image.id)}
-              onDoubleClick={() => handleDoubleClick(image.id)}
+              onDoubleClick={() => handleDoubleClick(image)}
             >
               <LazyImage
                 imageId={image.id}
@@ -116,7 +119,7 @@ export function ImageGallery({
       )}
       <ImageViewerDialog
         src={fullscreenImageSrc}
-        alt={"Fullscreen Image"}
+        alt={fullscreenImageAlt}
         open={isViewerOpen}
         onOpenChange={setIsViewerOpen}
       />
