@@ -378,7 +378,6 @@ export default function Home() {
           ref={leftPanelRef}
           defaultSize={20}
           minSize={4}
-          maxSize={30}
           collapsible
           collapsedSize={4}
           onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -386,66 +385,68 @@ export default function Home() {
         >
           {!isLeftPanelCollapsed && (
             <div className="flex h-full flex-col">
-              <div className="flex flex-col gap-4 border-b p-4">
-                <h2 className="text-lg font-semibold">Folders</h2>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={handleFolderSelectClick} variant="outline" disabled={isLoading}>
-                    <Folder className="mr-2 h-4 w-4" />
-                    Select Folder
-                  </Button>
-                  <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Clear All
-                  </Button>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Filter by name or metadata..."
-                    className="pl-8"
-                    value={filterQuery}
-                    onChange={(e) => setFilterQuery(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <SlidersHorizontal className="mr-2 h-4 w-4" />
-                      Advanced Search
+              <div className="border-b p-4">
+                <div className="mx-auto max-w-sm space-y-4">
+                  <h2 className="text-lg font-semibold">Folders</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={handleFolderSelectClick} variant="outline" disabled={isLoading}>
+                      <Folder className="mr-2 h-4 w-4" />
+                      Select Folder
                     </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                    <AdvancedSearchForm
-                      searchState={advancedSearchState}
-                      onSearchChange={handleAdvancedSearchChange}
-                      onReset={handleAdvancedSearchReset}
+                    <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Clear All
+                    </Button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Filter by name or metadata..."
+                      className="pl-8"
+                      value={filterQuery}
+                      onChange={(e) => setFilterQuery(e.target.value)}
+                      disabled={isLoading}
                     />
-                  </CollapsibleContent>
-                </Collapsible>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="view-subfolders"
-                          checked={viewSubfolders}
-                          onCheckedChange={setViewSubfolders}
-                          disabled={isLoading}
-                        />
-                        <Label
-                          htmlFor="view-subfolders"
-                          className="cursor-pointer text-sm"
-                        >
-                          View Subfolders
-                        </Label>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Show images from all subfolders.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                  </div>
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        <SlidersHorizontal className="mr-2 h-4 w-4" />
+                        Advanced Search
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-4">
+                      <AdvancedSearchForm
+                        searchState={advancedSearchState}
+                        onSearchChange={handleAdvancedSearchChange}
+                        onReset={handleAdvancedSearchReset}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="view-subfolders"
+                            checked={viewSubfolders}
+                            onCheckedChange={setViewSubfolders}
+                            disabled={isLoading}
+                          />
+                          <Label
+                            htmlFor="view-subfolders"
+                            className="cursor-pointer text-sm"
+                          >
+                            View Subfolders
+                          </Label>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Show images from all subfolders.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
               <ScrollArea className="flex-1">
                 {fileTree ? (
@@ -463,7 +464,7 @@ export default function Home() {
             </div>
           )}
         </ResizablePanel>
-        <ResizableHandle className="relative flex w-4 items-center justify-center bg-border/20 after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary">
+        <ResizableHandle className="relative flex w-4 items-center justify-center bg-transparent after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-border">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -500,7 +501,7 @@ export default function Home() {
             itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
           />
         </ResizablePanel>
-        <ResizableHandle className="relative flex w-4 items-center justify-center bg-border/20 after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary">
+        <ResizableHandle className="relative flex w-4 items-center justify-center bg-transparent after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-border">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -527,7 +528,6 @@ export default function Home() {
           ref={rightPanelRef}
           defaultSize={25}
           minSize={4}
-          maxSize={35}
           collapsible
           collapsedSize={4}
           onCollapse={() => setIsRightPanelCollapsed(true)}
