@@ -7,8 +7,6 @@ import { ImageViewerDialog } from "./image-viewer-dialog";
 import { StoredImage, getStoredImageFile } from "@/lib/image-db";
 import { GalleryPagination } from "./gallery-pagination";
 import { LazyImage } from "./lazy-image";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { ScrollContainerContext } from "./scroll-container-context";
 
 interface ImageGalleryProps {
   files: StoredImage[];
@@ -37,7 +35,6 @@ export function ImageGallery({
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
-  const parentRef = React.useRef<HTMLDivElement>(null);
 
   const handleDoubleClick = async (id: number) => {
     const file = await getStoredImageFile(id);
@@ -55,26 +52,6 @@ export function ImageGallery({
     }
   }, [isViewerOpen, fullscreenImageSrc]);
 
-  const rowCount = Math.ceil(files.length / gridCols);
-  const columnCount = gridCols;
-  const isSingleColumn = columnCount === 1;
-  const gap = 16; // Corresponds to gap-4 in Tailwind
-
-  const rowVirtualizer = useVirtualizer({
-    count: rowCount,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => {
-      if (!parentRef.current) return 250;
-      // Calculate the width of a single image
-      // Total width - total gap space / number of columns
-      const imageWidth = (parentRef.current.clientWidth - (columnCount - 1) * gap) / columnCount;
-      // In aspect-square, height equals width.
-      return isSingleColumn ? 300 : imageWidth;
-    },
-    overscan: 3,
-    gap,
-  });
-
   if (files.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
@@ -88,71 +65,45 @@ export function ImageGallery({
   }
 
   const showPagination = totalPages >= 1;
+  const isSingleColumn = gridCols === 1;
 
   return (
     <div className="flex h-full flex-col">
-      <ScrollContainerContext.Provider value={parentRef}>
-        <div ref={parentRef} className="flex-grow overflow-auto p-4">
-          <div
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const itemsInRow = files.slice(
-                virtualRow.index * columnCount,
-                (virtualRow.index * columnCount) + columnCount
-              );
-              return (
-                <div
-                  key={virtualRow.index}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${virtualRow.start}px)`,
-                    display: "grid",
-                    gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-                    gap: `${gap}px`,
-                  }}
-                >
-                  {itemsInRow.map((image) => (
-                    <div
-                      key={image.id}
-                      className={cn(
-                        "relative cursor-pointer overflow-hidden border-2",
-                        selectedImageId === image.id
-                          ? "border-primary"
-                          : "border-transparent",
-                        !isSingleColumn && "aspect-square"
-                      )}
-                      onClick={() => onSelectImage(image.id)}
-                      onDoubleClick={() => handleDoubleClick(image.id)}
-                    >
-                      <LazyImage
-                        imageId={image.id}
-                        alt={image.name}
-                        className={cn(
-                          "h-full w-full",
-                          isSingleColumn ? "object-contain" : "object-cover"
-                        )}
-                      />
-                      <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
-                        <p className="truncate text-xs font-medium text-white">
-                          {image.name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+      <div className="flex-grow overflow-auto p-4">
+        <div
+          className="grid gap-4"
+          style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+        >
+          {files.map((image) => (
+            <div
+              key={image.id}
+              className={cn(
+                "relative cursor-pointer overflow-hidden rounded-md border-2",
+                selectedImageId === image.id
+                  ? "border-primary"
+                  : "border-transparent",
+                !isSingleColumn && "aspect-square"
+              )}
+              onClick={() => onSelectImage(image.id)}
+              onDoubleClick={() => handleDoubleClick(image.id)}
+            >
+              <LazyImage
+                imageId={image.id}
+                alt={image.name}
+                className={cn(
+                  "h-full w-full",
+                  isSingleColumn ? "object-contain" : "object-cover"
+                )}
+              />
+              <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
+                <p className="truncate text-xs font-medium text-white">
+                  {image.name}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
-      </ScrollContainerContext.Provider>
+      </div>
       {showPagination && (
         <GalleryPagination
           currentPage={currentPage}
