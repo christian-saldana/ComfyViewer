@@ -66,34 +66,41 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
   
   let processedCount = 0;
   const totalFiles = files.length;
+  const CHUNK_SIZE = 50; // Process in chunks to avoid transaction timeouts
 
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  for (const file of files) {
-    // Write the actual file to the Origin Private File System
-    const fileHandle = await root.getFileHandle(file.name, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(file);
-    await writable.close();
+  for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
+    const chunk = files.slice(i, i + CHUNK_SIZE);
+    const metadataChunk: StorableMetadata[] = [];
 
-    // Prepare the metadata object for IndexedDB
-    const metadata: StorableMetadata = {
-      name: file.name,
-      type: file.type,
-      lastModified: file.lastModified,
-      webkitRelativePath: file.webkitRelativePath,
-      thumbnail: '', // This field is currently unused
-      size: file.size,
-    };
+    // First, perform all file system operations for the current chunk
+    for (const file of chunk) {
+      const fileHandle = await root.getFileHandle(file.name, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(file);
+      await writable.close();
 
-    // Add the metadata to our IndexedDB transaction
-    await tx.store.add(metadata);
+      metadataChunk.push({
+        name: file.name,
+        type: file.type,
+        lastModified: file.lastModified,
+        webkitRelativePath: file.webkitRelativePath,
+        thumbnail: '',
+        size: file.size,
+      });
 
-    processedCount++;
-    if (onProgress) {
-      onProgress((processedCount / totalFiles) * 100);
+      processedCount++;
+      if (onProgress) {
+        onProgress((processedCount / totalFiles) * 100);
+      }
     }
+
+    // Now, perform a single, quick transaction to store the metadata for the chunk
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    await Promise.all([
+      ...metadataChunk.map(metadata => tx.store.add(metadata)),
+      tx.done
+    ]);
   }
-  await tx.done;
 
   // Cache the relative paths in localStorage for quick access
   const paths = files.map(file => ({ webkitRelativePath: file.webkitRelativePath }));
