@@ -411,73 +411,69 @@ export default function Home() {
             onCollapse={() => setIsLeftPanelCollapsed(true)}
             onExpand={() => setIsLeftPanelCollapsed(false)}
           >
-            {!isLeftPanelCollapsed && (
+            {!isLeftPanelCollapsed && showLeftPanelContent && (
               <div className="flex h-full flex-col">
                 <div className="border-b p-4">
                   <div className="w-full max-w-sm space-y-4">
                     <h2 className="text-lg font-semibold">Folders</h2>
-                    {showLeftPanelContent && (
-                      <>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button onClick={handleFolderSelectClick} variant="outline" disabled={isLoading}>
-                            <Folder className="mr-2 h-4 w-4" />
-                            Select Folder
-                          </Button>
-                          <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Clear All
-                          </Button>
-                        </div>
-                        <div className="relative">
-                          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            placeholder="Filter by name or metadata..."
-                            className="pl-8"
-                            value={filterQuery}
-                            onChange={(e) => setFilterQuery(e.target.value)}
-                            disabled={isLoading}
-                          />
-                        </div>
-                        <Collapsible>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                              <SlidersHorizontal className="mr-2 h-4 w-4" />
-                              Advanced Search
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="pt-4">
-                            <AdvancedSearchForm
-                              searchState={advancedSearchState}
-                              onSearchChange={handleAdvancedSearchChange}
-                              onReset={handleAdvancedSearchReset}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={handleFolderSelectClick} variant="outline" disabled={isLoading}>
+                        <Folder className="mr-2 h-4 w-4" />
+                        Select Folder
+                      </Button>
+                      <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Clear All
+                      </Button>
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Filter by name or metadata..."
+                        className="pl-8"
+                        value={filterQuery}
+                        onChange={(e) => setFilterQuery(e.target.value)}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                          <SlidersHorizontal className="mr-2 h-4 w-4" />
+                          Advanced Search
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-4">
+                        <AdvancedSearchForm
+                          searchState={advancedSearchState}
+                          onSearchChange={handleAdvancedSearchChange}
+                          onReset={handleAdvancedSearchReset}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="view-subfolders"
+                              checked={viewSubfolders}
+                              onCheckedChange={setViewSubfolders}
+                              disabled={isLoading}
                             />
-                          </CollapsibleContent>
-                        </Collapsible>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id="view-subfolders"
-                                  checked={viewSubfolders}
-                                  onCheckedChange={setViewSubfolders}
-                                  disabled={isLoading}
-                                />
-                                <Label
-                                  htmlFor="view-subfolders"
-                                  className="cursor-pointer text-sm"
-                                >
-                                  View Subfolders
-                                </Label>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Show images from all subfolders.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </>
-                    )}
+                            <Label
+                              htmlFor="view-subfolders"
+                              className="cursor-pointer text-sm"
+                            >
+                              View Subfolders
+                            </Label>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Show images from all subfolders.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
                 <ScrollArea className="flex-1">
