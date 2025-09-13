@@ -5,7 +5,7 @@ import { getMetadata } from 'meta-png';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 8; // Version bump for schema change
+const DB_VERSION = 9; // Version bump to trigger upgrade and fix inconsistency
 const PATHS_STORAGE_KEY = 'image-viewer-paths';
 
 // This is the object we'll work with in the application
@@ -49,7 +49,7 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 8) {
+      if (oldVersion < 9) {
         if (db.objectStoreNames.contains(STORE_NAME)) {
           db.deleteObjectStore(STORE_NAME);
         }
@@ -59,6 +59,9 @@ async function getDb() {
         store.createIndex('by-size', 'size');
         store.createIndex('by-name', 'name');
         store.createIndex('by-workflow', 'workflow');
+
+        // Clear the localStorage path cache to prevent inconsistencies
+        localStorage.removeItem(PATHS_STORAGE_KEY);
       }
     },
   });
@@ -180,6 +183,7 @@ export async function getPaginatedImages(params: GetImagesParams): Promise<Pagin
       }
       totalCount++;
     }
+    
     cursor = await cursor.continue();
   }
 
