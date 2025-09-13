@@ -3,7 +3,6 @@
 import * as React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { ScrollContainerContext } from "./scroll-container-context";
 import { getStoredImageFile } from "@/lib/image-db";
 
 interface LazyImageProps {
@@ -15,7 +14,6 @@ interface LazyImageProps {
 export function LazyImage({ imageId, alt, className }: LazyImageProps) {
   const [imageSrc, setImageSrc] = React.useState<string | null>(null);
   const placeholderRef = React.useRef<HTMLDivElement>(null);
-  const scrollContainerRef = React.useContext(ScrollContainerContext);
 
   React.useEffect(() => {
     let observer: IntersectionObserver;
@@ -23,8 +21,6 @@ export function LazyImage({ imageId, alt, className }: LazyImageProps) {
 
     const currentRef = placeholderRef.current;
     if (currentRef) {
-      const scrollParent = scrollContainerRef?.current ?? null;
-
       observer = new IntersectionObserver(
         async ([entry]) => {
           if (entry.isIntersecting) {
@@ -37,7 +33,7 @@ export function LazyImage({ imageId, alt, className }: LazyImageProps) {
           }
         },
         {
-          root: scrollParent,
+          // The root defaults to the browser viewport, which is what we want now.
           rootMargin: "200px",
         }
       );
@@ -52,7 +48,7 @@ export function LazyImage({ imageId, alt, className }: LazyImageProps) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [imageId, scrollContainerRef]);
+  }, [imageId]);
 
   if (imageSrc) {
     return <img src={imageSrc} alt={alt} className={className} />;
