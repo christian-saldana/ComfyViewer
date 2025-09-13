@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { ImageViewerDialog } from "./image-viewer-dialog";
 import { StoredImage } from "@/lib/image-db";
 import { GalleryPagination } from "./gallery-pagination";
 import { LazyImage } from "./lazy-image";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { ScrollContainerContext } from "./scroll-container-context";
 
 interface ImageGalleryProps {
   files: StoredImage[];
@@ -36,6 +37,7 @@ export function ImageGallery({
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
+  const parentRef = React.useRef<HTMLDivElement>(null);
 
   const handleDoubleClick = (file: File) => {
     const objectUrl = URL.createObjectURL(file);
@@ -50,6 +52,16 @@ export function ImageGallery({
     }
   }, [isViewerOpen, fullscreenImageSrc]);
 
+  const rowCount = Math.ceil(files.length / gridCols);
+  const columnCount = gridCols;
+
+  const rowVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => (parentRef.current ? parentRef.current.offsetWidth / columnCount : 250),
+    overscan: 3,
+  });
+
   if (files.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
@@ -62,48 +74,75 @@ export function ImageGallery({
     );
   }
 
-  const isSingleColumn = gridCols === 1;
   const showPagination = totalPages > 1;
+  const isSingleColumn = columnCount === 1;
 
   return (
     <div className="flex h-full flex-col">
-      <ScrollArea className="flex-grow">
-        <div
-          className="grid gap-4 p-4"
-          style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
-        >
-          {files.map(({ file }) => (
-            <div
-              key={file.name + file.webkitRelativePath}
-              className={cn(
-                "relative cursor-pointer overflow-hidden border-2",
-                selectedImage?.name === file.name &&
-                  selectedImage.webkitRelativePath === file.webkitRelativePath
-                  ? "border-primary"
-                  : "border-transparent",
-                !isSingleColumn && "aspect-square"
-              )}
-              onClick={() => onSelectImage(file)}
-              onDoubleClick={() => handleDoubleClick(file)}
-            >
-              <LazyImage
-                file={file}
-                alt={file.name}
-                className={cn(
-                  "h-full w-full",
-                  isSingleColumn ? "object-contain" : "object-cover"
-                )}
-              />
-              <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
-                <p className="truncate text-xs font-medium text-white">
-                  {file.name}
-                </p>
-              </div>
-            </div>
-          ))}
+      <ScrollContainerContext.Provider value={parentRef}>
+        <div ref={parentRef} className="flex-grow overflow-auto">
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const itemsInRow = files.slice(
+                virtualRow.index * columnCount,
+                (virtualRow.index * columnCount) + columnCount
+              );
+              return (
+                <div
+                  key={virtualRow.index}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+                    gap: "1rem",
+                    padding: "1rem",
+                  }}
+                >
+                  {itemsInRow.map(({ file }) => (
+                    <div
+                      key={file.name + file.webkitRelativePath}
+                      className={cn(
+                        "relative cursor-pointer overflow-hidden border-2",
+                        selectedImage?.name === file.name &&
+                          selectedImage.webkitRelativePath === file.webkitRelativePath
+                          ? "border-primary"
+                          : "border-transparent",
+                        !isSingleColumn && "aspect-square"
+                      )}
+                      onClick={() => onSelectImage(file)}
+                      onDoubleClick={() => handleDoubleClick(file)}
+                    >
+                      <LazyImage
+                        file={file}
+                        alt={file.name}
+                        className={cn(
+                          "h-full w-full",
+                          isSingleColumn ? "object-contain" : "object-cover"
+                        )}
+                      />
+                      <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
+                        <p className="truncate text-xs font-medium text-white">
+                          {file.name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
-
-      </ScrollArea>
+      </ScrollContainerContext.Provider>
       {showPagination && (
         <GalleryPagination
           currentPage={currentPage}
