@@ -8,13 +8,13 @@ import {
   Trash2,
   Search,
   SlidersHorizontal,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-  ImperativePanelHandle,
 } from "@/components/ui/resizable";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
@@ -38,10 +38,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { storeImages, clearImages, StoredImage, getStoredImageFile, getAllStoredImageMetadata } from "@/lib/image-db";
+import { storeImages, clearImages, StoredImage, getStoredImageFile, getAllStoredImageMetadata, addNewImages } from "@/lib/image-db";
 import { Progress } from "@/components/ui/progress";
 import { AdvancedSearchForm, AdvancedSearchState } from "@/components/advanced-search-form";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
@@ -96,6 +97,7 @@ export default function Home() {
   const [progress, setProgress] = React.useState(0);
   const [filterQuery, setFilterQuery] = React.useState("");
   const [advancedSearchState, setAdvancedSearchState] = React.useState<AdvancedSearchState>(initialAdvancedSearchState);
+  const [isRefreshMode, setIsRefreshMode] = React.useState(false);
 
   const debouncedFilterQuery = useDebounce(filterQuery, 300);
   const debouncedAdvancedSearch = useDebounce(advancedSearchState, 300);
@@ -103,29 +105,12 @@ export default function Home() {
   const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
-  const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
-  const panelGroupContainerRef = React.useRef<HTMLDivElement>(null);
 
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = React.useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = React.useState(false);
 
   const MIN_COLS = 1;
   const MAX_COLS = 12;
-
-  React.useEffect(() => {
-    const container = panelGroupContainerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      setContainerWidth(container.offsetWidth);
-    });
-
-    resizeObserver.observe(container);
-    setContainerWidth(container.offsetWidth); // Set initial width
-
-    return () => resizeObserver.disconnect();
-  }, []);
 
   React.useEffect(() => {
     const storedItemsPerPage = localStorage.getItem(ITEMS_PER_PAGE_KEY);
@@ -263,18 +248,35 @@ export default function Home() {
 
       setIsLoading(true);
       setProgress(0);
-      await storeImages(imageFiles, (p) => setProgress(p));
+
+      if (isRefreshMode) {
+        const newImageCount = await addNewImages(imageFiles, (p) => setProgress(p));
+        if (newImageCount > 0) {
+          toast.success(`${newImageCount} new image(s) added.`);
+        } else {
+          toast.info("No new images found.");
+        }
+        setIsRefreshMode(false);
+      } else {
+        await storeImages(imageFiles, (p) => setProgress(p));
+        toast.success("Image library loaded.");
+      }
 
       const metadata = await getAllStoredImageMetadata();
       setAllImageMetadata(metadata);
       setSelectedImageId(null);
 
-      const newTree = buildFileTree(metadata as any);
-      const newPath = newTree ? newTree.path : "";
-      setSelectedPath(newPath);
+      if (!isRefreshMode) {
+        const newTree = buildFileTree(metadata as any);
+        const newPath = newTree ? newTree.path : "";
+        setSelectedPath(newPath);
+      }
 
       setCurrentPage(1);
       setIsLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -284,6 +286,7 @@ export default function Home() {
     setSelectedPath("");
     setSelectedImageId(null);
     setCurrentPage(1);
+    toast.success("Image library cleared.");
   };
 
   const handleFolderSelect = (path: string) => {
@@ -292,6 +295,12 @@ export default function Home() {
   };
 
   const handleFolderSelectClick = () => {
+    setIsRefreshMode(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleRefreshClick = () => {
+    setIsRefreshMode(true);
     fileInputRef.current?.click();
   };
 
@@ -375,7 +384,6 @@ export default function Home() {
         className="w-full"
       >
         <ResizablePanel
-          ref={leftPanelRef}
           defaultSize={20}
           minSize={4}
           collapsible
@@ -393,9 +401,9 @@ export default function Home() {
                       <Folder className="mr-2 h-4 w-4" />
                       Select Folder
                     </Button>
-                    <Button onClick={handleClearImages} variant="destructive" disabled={isLoading}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Clear All
+                    <Button onClick={handleRefreshClick} variant="outline" disabled={isLoading}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Refresh
                     </Button>
                   </div>
                   <div className="relative">
@@ -446,6 +454,10 @@ export default function Home() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  <Button onClick={handleClearImages} variant="destructive" disabled={isLoading} className="w-full">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear All Images
+                  </Button>
                 </div>
               </div>
               <ScrollArea className="flex-1">
@@ -481,7 +493,6 @@ export default function Home() {
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel
-          ref={rightPanelRef}
           defaultSize={25}
           minSize={4}
           collapsible

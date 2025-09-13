@@ -92,9 +92,7 @@ async function getDb() {
   });
 }
 
-export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
-  await clearImages();
-
+async function processAndStoreFiles(files: File[], onProgress?: (progress: number) => void) {
   const db = await getDb();
   const root = await navigator.storage.getDirectory();
 
@@ -107,29 +105,33 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
     const metadataChunk: StorableMetadata[] = [];
 
     for (const file of chunk) {
-      const fileHandle = await root.getFileHandle(file.name, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(file);
-      await writable.close();
+      try {
+        const fileHandle = await root.getFileHandle(file.name, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file);
+        await writable.close();
 
-      const comfyMetadata = await parseComfyUiMetadata(file);
+        const comfyMetadata = await parseComfyUiMetadata(file);
 
-      metadataChunk.push({
-        name: file.name,
-        type: file.type,
-        lastModified: file.lastModified,
-        webkitRelativePath: file.webkitRelativePath,
-        thumbnail: '',
-        size: file.size,
-        workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
-        prompt: comfyMetadata?.prompt ?? null,
-        negativePrompt: comfyMetadata?.negativePrompt ?? null,
-        seed: comfyMetadata ? String(comfyMetadata.seed) : null,
-        cfg: comfyMetadata ? String(comfyMetadata.cfg) : null,
-        steps: comfyMetadata ? String(comfyMetadata.steps) : null,
-        sampler: comfyMetadata?.sampler ?? null,
-        scheduler: comfyMetadata?.scheduler ?? null,
-      });
+        metadataChunk.push({
+          name: file.name,
+          type: file.type,
+          lastModified: file.lastModified,
+          webkitRelativePath: file.webkitRelativePath,
+          thumbnail: '',
+          size: file.size,
+          workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
+          prompt: comfyMetadata?.prompt ?? null,
+          negativePrompt: comfyMetadata?.negativePrompt ?? null,
+          seed: comfyMetadata ? String(comfyMetadata.seed) : null,
+          cfg: comfyMetadata ? String(comfyMetadata.cfg) : null,
+          steps: comfyMetadata ? String(comfyMetadata.steps) : null,
+          sampler: comfyMetadata?.sampler ?? null,
+          scheduler: comfyMetadata?.scheduler ?? null,
+        });
+      } catch (e) {
+        console.error(`Skipping file due to error: ${file.name}`, e);
+      }
 
       processedCount++;
       if (onProgress) {
@@ -137,12 +139,31 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
       }
     }
 
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    await Promise.all([
-      ...metadataChunk.map(metadata => tx.store.add(metadata)),
-      tx.done
-    ]);
+    if (metadataChunk.length > 0) {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      await Promise.all([
+        ...metadataChunk.map(metadata => tx.store.add(metadata)),
+        tx.done
+      ]);
+    }
   }
+}
+
+export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
+  await clearImages();
+  await processAndStoreFiles(files, onProgress);
+}
+
+export async function addNewImages(files: File[], onProgress?: (progress: number) => void): Promise<number> {
+  const existingMetadata = await getAllStoredImageMetadata();
+  const existingPaths = new Set(existingMetadata.map(img => img.webkitRelativePath));
+  const newFiles = files.filter(file => !existingPaths.has(file.webkitRelativePath));
+
+  if (newFiles.length > 0) {
+    await processAndStoreFiles(newFiles, onProgress);
+  }
+
+  return newFiles.length;
 }
 
 export async function getAllStoredImageMetadata(): Promise<StoredImage[]> {
