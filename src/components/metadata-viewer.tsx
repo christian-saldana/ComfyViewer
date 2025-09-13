@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info } from "lucide-react";
+import { Info, Maximize } from "lucide-react";
 import { getMetadata } from "meta-png";
 import {
   Accordion,
@@ -10,6 +10,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -50,6 +57,7 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
     React.useState<ComfyMetadata | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [isWorkflowFullscreen, setIsWorkflowFullscreen] = React.useState(false);
 
   React.useEffect(() => {
     // Reset state when image changes
@@ -251,9 +259,24 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                   </ul>
                   <Accordion type="single" collapsible className="w-full pt-4">
                     <AccordionItem value="item-1">
-                      <AccordionTrigger>Full Workflow (JSON)</AccordionTrigger>
+                      <div className="flex items-center justify-between">
+                        <AccordionTrigger className="flex-1">
+                          Full Workflow (JSON)
+                        </AccordionTrigger>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsWorkflowFullscreen(true);
+                          }}
+                        >
+                          <Maximize className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <AccordionContent>
-                        <ScrollArea className="h-64 w-full rounded-md border bg-muted/50 p-2">
+                        <ScrollArea className="h-64 w-full resize-y overflow-auto rounded-md border bg-muted/50 p-2">
                           <pre className="text-xs">
                             {JSON.stringify(
                               comfyMetadata.fullWorkflow,
@@ -265,6 +288,25 @@ export function MetadataViewer({ image }: MetadataViewerProps) {
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+                  <Dialog
+                    open={isWorkflowFullscreen}
+                    onOpenChange={setIsWorkflowFullscreen}
+                  >
+                    <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle>Full Workflow (JSON)</DialogTitle>
+                      </DialogHeader>
+                      <ScrollArea className="flex-1 rounded-md border bg-muted/50 p-2">
+                        <pre className="text-xs">
+                          {JSON.stringify(
+                            comfyMetadata.fullWorkflow,
+                            null,
+                            2
+                          )}
+                        </pre>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
                 </>
               )}
             </div>
