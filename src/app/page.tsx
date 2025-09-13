@@ -8,6 +8,8 @@ import {
   Trash2,
   Search,
   SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,27 +107,12 @@ export default function Home() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const leftPanelRef = React.useRef<ImperativePanelHandle>(null);
   const rightPanelRef = React.useRef<ImperativePanelHandle>(null);
-  const panelGroupContainerRef = React.useRef<HTMLDivElement>(null);
 
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = React.useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = React.useState(false);
 
   const MIN_COLS = 1;
   const MAX_COLS = 12;
-
-  React.useEffect(() => {
-    const container = panelGroupContainerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      setContainerWidth(container.offsetWidth);
-    });
-
-    resizeObserver.observe(container);
-    setContainerWidth(container.offsetWidth); // Set initial width
-
-    return () => resizeObserver.disconnect();
-  }, []);
 
   React.useEffect(() => {
     const storedItemsPerPage = localStorage.getItem(ITEMS_PER_PAGE_KEY);
@@ -303,6 +290,26 @@ export default function Home() {
     setAdvancedSearchState(initialAdvancedSearchState);
   };
 
+  const toggleLeftPanel = () => {
+    if (leftPanelRef.current) {
+      if (isLeftPanelCollapsed) {
+        leftPanelRef.current.expand();
+      } else {
+        leftPanelRef.current.collapse();
+      }
+    }
+  };
+
+  const toggleRightPanel = () => {
+    if (rightPanelRef.current) {
+      if (isRightPanelCollapsed) {
+        rightPanelRef.current.expand();
+      } else {
+        rightPanelRef.current.collapse();
+      }
+    }
+  };
+
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b p-4">
@@ -380,9 +387,10 @@ export default function Home() {
           minSize={15}
           maxSize={40}
           collapsible
-          collapsedSize={4}
+          collapsedSize={0}
           onCollapse={() => setIsLeftPanelCollapsed(true)}
           onExpand={() => setIsLeftPanelCollapsed(false)}
+          className={isLeftPanelCollapsed ? "min-w-[0px]": ""}
         >
           {!isLeftPanelCollapsed && (
             <div className="flex h-full flex-col">
@@ -465,7 +473,18 @@ export default function Home() {
             </div>
           )}
         </ResizablePanel>
-        <ResizableHandle />
+        <ResizableHandle>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={toggleLeftPanel}
+            >
+              {isLeftPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+          </div>
+        </ResizableHandle>
         <ResizablePanel defaultSize={55}>
           <ImageGallery
             files={paginatedFiles}
@@ -480,15 +499,27 @@ export default function Home() {
             itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
           />
         </ResizablePanel>
-        <ResizableHandle />
+        <ResizableHandle>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={toggleRightPanel}
+            >
+              {isRightPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+          </div>
+        </ResizableHandle>
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={25}
-          minSize={4}
+          minSize={15}
           collapsible
-          collapsedSize={4}
+          collapsedSize={0}
           onCollapse={() => setIsRightPanelCollapsed(true)}
           onExpand={() => setIsRightPanelCollapsed(false)}
+          className={isRightPanelCollapsed ? "min-w-[0px]": ""}
         >
           {!isRightPanelCollapsed && (
             <MetadataViewer imageFile={selectedImageFile} imageMetadata={selectedImageMetadata} />
