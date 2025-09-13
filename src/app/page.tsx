@@ -377,8 +377,8 @@ export default function Home() {
         <ResizablePanel
           ref={leftPanelRef}
           defaultSize={20}
-          minSize={15}
-          maxSize={40}
+          minSize={4}
+          maxSize={30}
           collapsible
           collapsedSize={4}
           onCollapse={() => setIsLeftPanelCollapsed(true)}
@@ -463,7 +463,7 @@ export default function Home() {
             </div>
           )}
         </ResizablePanel>
-        <ResizableHandle className="relative flex w-2 items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100">
+        <ResizableHandle className="relative flex w-4 items-center justify-center bg-border/20 after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -500,7 +500,7 @@ export default function Home() {
             itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
           />
         </ResizablePanel>
-        <ResizableHandle className="relative flex w-2 items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100">
+        <ResizableHandle className="relative flex w-4 items-center justify-center bg-border/20 after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -526,8 +526,8 @@ export default function Home() {
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={25}
-          minSize={15}
-          maxSize={40}
+          minSize={4}
+          maxSize={35}
           collapsible
           collapsedSize={4}
           onCollapse={() => setIsRightPanelCollapsed(true)}
