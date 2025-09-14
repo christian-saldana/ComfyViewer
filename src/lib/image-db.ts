@@ -110,8 +110,9 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
 
   for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
     const chunk = files.slice(i, i + CHUNK_SIZE);
+    const metadataChunk: StorableMetadata[] = [];
 
-    const metadataPromises = chunk.map(async (file) => {
+    for (const file of chunk) {
       try {
         const fileHandle = await root.getFileHandle(file.name, { create: true });
         const writable = await fileHandle.createWritable();
@@ -120,7 +121,7 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
 
         const comfyMetadata = await parseComfyUiMetadata(file);
 
-        return {
+        metadataChunk.push({
           name: file.name,
           type: file.type,
           lastModified: file.lastModified,
@@ -137,15 +138,16 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
           scheduler: comfyMetadata?.scheduler ?? null,
           model: comfyMetadata?.model ?? null,
           loras: comfyMetadata?.loras ?? [],
-        };
+        });
       } catch (e) {
         console.error(`Skipping file due to error: ${file.name}`, e);
-        return null;
       }
-    });
 
-    const metadataResults = await Promise.all(metadataPromises);
-    const metadataChunk = metadataResults.filter((m): m is StorableMetadata => m !== null);
+      processedCount++;
+      if (onProgress) {
+        onProgress((processedCount / totalFiles) * 100);
+      }
+    }
 
     if (metadataChunk.length > 0) {
       const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -153,11 +155,6 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
         ...metadataChunk.map(metadata => tx.store.add(metadata)),
         tx.done
       ]);
-    }
-
-    processedCount += chunk.length;
-    if (onProgress) {
-      onProgress((processedCount / totalFiles) * 100);
     }
   }
 }
