@@ -133,7 +133,7 @@ export default function Home() {
       setAllImageMetadata(metadata);
 
       if (metadata.length > 0) {
-        const tree = buildFileTree(metadata as any);
+        const tree = buildFileTree(metadata);
         const initialPath = tree ? tree.path : "";
         setSelectedPath(initialPath);
       }
@@ -143,7 +143,7 @@ export default function Home() {
   }, []);
 
   const fileTree = React.useMemo(() => {
-    return buildFileTree(allImageMetadata as any);
+    return buildFileTree(allImageMetadata);
   }, [allImageMetadata]);
 
   const processedImages = React.useMemo(() => {
@@ -267,7 +267,7 @@ export default function Home() {
       setSelectedImageId(null);
 
       if (!isRefreshMode) {
-        const newTree = buildFileTree(metadata as any);
+        const newTree = buildFileTree(metadata);
         const newPath = newTree ? newTree.path : "";
         setSelectedPath(newPath);
       }
@@ -292,6 +292,15 @@ export default function Home() {
   const handleFolderSelect = (path: string) => {
     setSelectedPath(path);
     setSelectedImageId(null);
+  };
+
+  const handleFileSelectFromTree = (id: number) => {
+    const imageIndex = processedImages.findIndex(img => img.id === id);
+    if (imageIndex !== -1) {
+      const page = Math.floor(imageIndex / itemsPerPage) + 1;
+      setCurrentPage(page);
+    }
+    setSelectedImageId(id);
   };
 
   const handleFolderSelectClick = () => {
@@ -466,6 +475,8 @@ export default function Home() {
                     tree={fileTree}
                     selectedPath={selectedPath}
                     onSelectPath={handleFolderSelect}
+                    selectedImageId={selectedImageId}
+                    onSelectFile={handleFileSelectFromTree}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Folder, FolderOpen } from "lucide-react";
+import { Folder, FolderOpen, FileImage } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -14,15 +14,19 @@ interface FileTreeProps {
   tree: FileTreeNode;
   selectedPath: string;
   onSelectPath: (path: string) => void;
+  selectedImageId: number | null;
+  onSelectFile: (id: number) => void;
 }
 
-export function FileTree({ tree, selectedPath, onSelectPath }: FileTreeProps) {
+export function FileTree({ tree, selectedPath, onSelectPath, selectedImageId, onSelectFile }: FileTreeProps) {
   return (
     <div className="p-2">
       <RecursiveTree
         node={tree}
         selectedPath={selectedPath}
         onSelectPath={onSelectPath}
+        selectedImageId={selectedImageId}
+        onSelectFile={onSelectFile}
       />
     </div>
   );
@@ -32,15 +36,19 @@ interface RecursiveTreeProps {
   node: FileTreeNode;
   selectedPath: string;
   onSelectPath: (path: string) => void;
+  selectedImageId: number | null;
+  onSelectFile: (id: number) => void;
 }
 
 function RecursiveTree({
   node,
   selectedPath,
   onSelectPath,
+  selectedImageId,
+  onSelectFile,
 }: RecursiveTreeProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const isSelected = selectedPath === node.path;
+  const isFolderSelected = selectedPath === node.path;
   const isParentOfSelected = selectedPath.startsWith(`${node.path}/`);
 
   React.useEffect(() => {
@@ -49,14 +57,31 @@ function RecursiveTree({
     }
   }, [selectedPath, isParentOfSelected]);
 
-  // If the folder has no sub-folders, render it as a simple, non-collapsible item.
+  if (node.type === 'file') {
+    const isFileSelected = selectedImageId === node.id;
+    return (
+      <div
+        className={cn(
+          "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium",
+          "hover:bg-accent",
+          isFileSelected && "bg-primary/10 text-primary"
+        )}
+        onClick={() => onSelectFile(node.id!)}
+      >
+        <FileImage className="h-4 w-4" />
+        <span>{node.name}</span>
+      </div>
+    );
+  }
+
+  // If the folder has no children, render it as a simple, non-collapsible item.
   if (node.children.length === 0) {
     return (
       <div
         className={cn(
           "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium",
           "hover:bg-accent",
-          isSelected && "bg-primary/10 text-primary"
+          isFolderSelected && "bg-primary/10 text-primary"
         )}
         onClick={() => onSelectPath(node.path)}
       >
@@ -66,14 +91,14 @@ function RecursiveTree({
     );
   }
 
-  // If the folder has sub-folders, render it as a collapsible item.
+  // If the folder has children, render it as a collapsible item.
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger
         className={cn(
           "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium",
           "hover:bg-accent",
-          isSelected && "bg-primary/10 text-primary"
+          isFolderSelected && "bg-primary/10 text-primary"
         )}
         onClick={() => onSelectPath(node.path)}
       >
@@ -91,6 +116,8 @@ function RecursiveTree({
             node={child}
             selectedPath={selectedPath}
             onSelectPath={onSelectPath}
+            selectedImageId={selectedImageId}
+            onSelectFile={onSelectFile}
           />
         ))}
       </CollapsibleContent>
