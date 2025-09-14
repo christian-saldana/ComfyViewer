@@ -81,7 +81,7 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     );
 
     const modelLoaderNode = Object.values(workflow).find(
-      (node: any) => node.class_type === "CheckpointLoaderSimple"
+      (node: any) => ["CheckpointLoaderSimple", "CheckpointLoader"].includes(node.class_type)
     ) as any;
     const model = modelLoaderNode?.inputs?.ckpt_name ?? null;
 
