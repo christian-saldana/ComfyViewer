@@ -114,14 +114,20 @@ async function getDb() {
 }
 
 async function processAndStoreFiles(files: File[], onProgress?: (progress: number) => void) {
-  const db = await getDb();
-  let processedCount = 0;
   const totalFiles = files.length;
+  if (totalFiles === 0) {
+    onProgress?.(100);
+    return;
+  }
 
-  for (const file of files) {
+  const onProgressThrottled = onProgress ? (p: number) => requestAnimationFrame(() => onProgress(p)) : () => {};
+  let parsedCount = 0;
+
+  // Step 1: Parse all files in parallel to prepare the data.
+  onProgressThrottled(0);
+  const preparedData = await Promise.all(files.map(async (file) => {
     try {
       const comfyMetadata = await parseComfyUiMetadata(file);
-
       const metadata: StorableMetadata = {
         name: file.name,
         type: file.type,
@@ -140,26 +146,44 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
         model: comfyMetadata?.model ?? null,
         loras: comfyMetadata?.loras ?? [],
       };
+      
+      parsedCount++;
+      onProgressThrottled((parsedCount / totalFiles) * 50); // Parsing is the first 50%
 
-      // Use a single transaction to ensure metadata and file are linked.
-      const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite');
-      const metadataStore = tx.objectStore(METADATA_STORE_NAME);
-      const fileStore = tx.objectStore(IMAGE_FILES_STORE_NAME);
-
-      const metadataId = await metadataStore.add(metadata);
-      await fileStore.add(file, metadataId);
-
-      await tx.done;
-
+      return { metadata, file };
     } catch (e) {
-      console.error(`Skipping file due to error: ${file.name}`, e);
+      console.error(`Skipping file due to error during parsing: ${file.name}`, e);
+      parsedCount++;
+      onProgressThrottled((parsedCount / totalFiles) * 50);
+      return null;
     }
+  }));
 
-    processedCount++;
-    if (onProgress) {
-      onProgress((processedCount / totalFiles) * 100);
-    }
+  const validData = preparedData.filter(Boolean) as { metadata: StorableMetadata; file: File }[];
+  const totalToStore = validData.length;
+  if (totalToStore === 0) {
+    onProgress?.(100);
+    return;
   }
+
+  // Step 2: Store all valid data in a single transaction.
+  const db = await getDb();
+  const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite');
+  
+  let storedCount = 0;
+  for (const { metadata, file } of validData) {
+    try {
+      const metadataId = await tx.objectStore(METADATA_STORE_NAME).add(metadata);
+      await tx.objectStore(IMAGE_FILES_STORE_NAME).add(file, metadataId);
+    } catch (e) {
+      console.error(`Skipping file due to error during storage: ${file.name}`, e);
+    }
+    storedCount++;
+    onProgressThrottled(50 + (storedCount / totalToStore) * 50); // Storing is the second 50%
+  }
+
+  await tx.done;
+  onProgressThrottled(100);
 }
 
 export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
