@@ -15,40 +15,40 @@ export interface ComfyMetadata {
 
 // Helper to resolve a value, which might be a direct value or a link to another node's input.
 const resolveValue = (workflow: any, input: any): any => {
-    if (!Array.isArray(input) || typeof input[0] !== 'string' || !workflow[input[0]]) {
-      return input; // It's a direct value
-    }
-    const sourceNode = workflow[input[0]];
-    if (sourceNode && sourceNode.inputs) {
-      // Common primitive node input names
-      if (sourceNode.inputs.value !== undefined) return sourceNode.inputs.value;
-      if (sourceNode.inputs._int !== undefined) return sourceNode.inputs._int;
-      if (sourceNode.inputs.float !== undefined) return sourceNode.inputs.float;
-      if (sourceNode.inputs.sampler_name !== undefined) return sourceNode.inputs.sampler_name;
-    }
-    return "N/A";
+  if (!Array.isArray(input) || typeof input[0] !== 'string' || !workflow[input[0]]) {
+    return input; // It's a direct value
+  }
+  const sourceNode = workflow[input[0]];
+  if (sourceNode && sourceNode.inputs) {
+    // Common primitive node input names
+    if (sourceNode.inputs.value !== undefined) return sourceNode.inputs.value;
+    if (sourceNode.inputs._int !== undefined) return sourceNode.inputs._int;
+    if (sourceNode.inputs.float !== undefined) return sourceNode.inputs.float;
+    if (sourceNode.inputs.sampler_name !== undefined) return sourceNode.inputs.sampler_name;
+  }
+  return "N/A";
 };
 
 // Helper to trace back through links to find the ultimate text prompt.
 const findPromptText = (workflow: any, startLink: any): string => {
-    let currentLink = startLink;
-    for (let i = 0; i < 10; i++) { // Safety break for circular dependencies
-      if (typeof currentLink === 'string') return currentLink;
-      if (!Array.isArray(currentLink) || typeof currentLink[0] !== 'string' || !workflow[currentLink[0]]) {
-        break;
-      }
-      const sourceNode = workflow[currentLink[0]];
-      if (!sourceNode || !sourceNode.inputs) break;
-      
-      // Found the text, return it
-      if (typeof sourceNode.inputs.text === 'string') return sourceNode.inputs.text;
-      // Some custom nodes use 'string'
-      if (typeof sourceNode.inputs.string === 'string') return sourceNode.inputs.string;
-
-      // Follow the link to the next node
-      currentLink = sourceNode.inputs.text || sourceNode.inputs.string;
+  let currentLink = startLink;
+  for (let i = 0; i < 10; i++) { // Safety break for circular dependencies
+    if (typeof currentLink === 'string') return currentLink;
+    if (!Array.isArray(currentLink) || typeof currentLink[0] !== 'string' || !workflow[currentLink[0]]) {
+      break;
     }
-    return "N/A";
+    const sourceNode = workflow[currentLink[0]];
+    if (!sourceNode || !sourceNode.inputs) break;
+
+    // Found the text, return it
+    if (typeof sourceNode.inputs.text === 'string') return sourceNode.inputs.text;
+    // Some custom nodes use 'string'
+    if (typeof sourceNode.inputs.string === 'string') return sourceNode.inputs.string;
+
+    // Follow the link to the next node
+    currentLink = sourceNode.inputs.text || sourceNode.inputs.string;
+  }
+  return "N/A";
 };
 
 export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | null> {
@@ -81,9 +81,14 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     );
 
     const modelLoaderNode = Object.values(workflow).find(
-      (node: any) => ["CheckpointLoaderSimple", "CheckpointLoader"].includes(node.class_type)
+      (node: any) => ["CheckpointLoaderSimple", "CheckpointLoader", "UNet loader with Name (Image Saver)"].includes(node.class_type)
     ) as any;
-    const model = modelLoaderNode?.inputs?.ckpt_name ?? null;
+    let model
+    if (modelLoaderNode?.inputs?.ckpt_name) {
+      model = modelLoaderNode?.inputs?.ckpt_name
+    } else if (modelLoaderNode?.inputs?.unet_name) {
+      model = modelLoaderNode?.inputs?.unet_name
+    }
 
     const loraLoaderNodes = Object.values(workflow).filter(
       (node: any) => node.class_type === "LoraLoader"
