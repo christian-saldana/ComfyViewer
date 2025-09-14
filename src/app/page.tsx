@@ -98,6 +98,7 @@ export default function Home() {
   const [filterQuery, setFilterQuery] = React.useState("");
   const [advancedSearchState, setAdvancedSearchState] = React.useState<AdvancedSearchState>(initialAdvancedSearchState);
   const [isRefreshMode, setIsRefreshMode] = React.useState(false);
+  const [jumpToImageId, setJumpToImageId] = React.useState<number | null>(null);
 
   const debouncedFilterQuery = useDebounce(filterQuery, 300);
   const debouncedAdvancedSearch = useDebounce(advancedSearchState, 300);
@@ -234,6 +235,17 @@ export default function Home() {
     return () => { isCancelled = true; };
   }, [selectedImageId, allImageMetadata]);
 
+  React.useEffect(() => {
+    if (jumpToImageId !== null && processedImages.length > 0) {
+      const imageIndex = processedImages.findIndex(img => img.id === jumpToImageId);
+      if (imageIndex !== -1) {
+        const page = Math.floor(imageIndex / itemsPerPage) + 1;
+        setCurrentPage(page);
+      }
+      setJumpToImageId(null);
+    }
+  }, [jumpToImageId, processedImages, itemsPerPage]);
+
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
     setGridCols(newGridCols);
@@ -295,12 +307,17 @@ export default function Home() {
   };
 
   const handleFileSelectFromTree = (id: number) => {
-    const imageIndex = processedImages.findIndex(img => img.id === id);
-    if (imageIndex !== -1) {
-      const page = Math.floor(imageIndex / itemsPerPage) + 1;
-      setCurrentPage(page);
-    }
+    const imageMetadata = allImageMetadata.find(img => img.id === id);
+    if (!imageMetadata) return;
+
+    const parentPath = imageMetadata.webkitRelativePath.substring(0, imageMetadata.webkitRelativePath.lastIndexOf('/'));
+
     setSelectedImageId(id);
+    setJumpToImageId(id);
+
+    if (parentPath !== selectedPath) {
+        setSelectedPath(parentPath);
+    }
   };
 
   const handleFolderSelectClick = () => {
