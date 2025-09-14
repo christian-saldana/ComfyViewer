@@ -253,7 +253,8 @@ export default function Home() {
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault();
         if (selectedImageId === null || processedImages.length === 0) {
           return;
         }
@@ -263,11 +264,22 @@ export default function Home() {
           return;
         }
 
-        let nextIndex;
-        if (event.key === 'ArrowRight') {
-          nextIndex = Math.min(currentIndex + 1, processedImages.length - 1);
-        } else { // ArrowLeft
-          nextIndex = Math.max(currentIndex - 1, 0);
+        let nextIndex = currentIndex;
+        const cols = gridCols;
+
+        switch (event.key) {
+          case 'ArrowRight':
+            nextIndex = Math.min(currentIndex + 1, processedImages.length - 1);
+            break;
+          case 'ArrowLeft':
+            nextIndex = Math.max(currentIndex - 1, 0);
+            break;
+          case 'ArrowDown':
+            nextIndex = Math.min(currentIndex + cols, processedImages.length - 1);
+            break;
+          case 'ArrowUp':
+            nextIndex = Math.max(currentIndex - cols, 0);
+            break;
         }
 
         if (nextIndex !== currentIndex) {
@@ -287,7 +299,7 @@ export default function Home() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedImageId, processedImages, itemsPerPage, currentPage]);
+  }, [selectedImageId, processedImages, itemsPerPage, currentPage, gridCols]);
 
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
