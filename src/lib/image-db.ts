@@ -100,64 +100,27 @@ async function getDb() {
   });
 }
 
-let opfsWorker: Worker | null = null;
-
-function getOpfsWorker() {
-  if (typeof window === 'undefined') return null;        // SSR guard
-  if (!opfsWorker) {
-    opfsWorker = new Worker(
-      new URL('./opfs-worker.ts', import.meta.url),
-      { type: 'module' }
-    );
-  }
-  return opfsWorker;
-}
-
-export async function saveViaWorker(file: File, parse = false): Promise<void> {
-  const worker = getOpfsWorker();
-  if (!worker) throw new Error('saveViaWorker must run in the browser');
-
-  const buf = await file.arrayBuffer();
-  return new Promise<void>((resolve, reject) => {
-    const onMessage = (e: MessageEvent) => {
-      worker.removeEventListener('message', onMessage);
-      if (e.data?.ok) resolve();
-      else reject(new Error(e.data?.error ?? 'Worker failed'));
-    };
-    worker.addEventListener('message', onMessage);
-    worker.postMessage({ name: file.name, bytes: buf, parse }, [buf]);
-  });
-}
-
-async function withPool<T>(items: T[], limit: number, fn: (item: T, i: number) => Promise<void>) {
-  const q = [...items].entries();
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    for (const [i, item] of q) await fn(item, i);
-  });
-  await Promise.all(workers);
-}
-
 async function processAndStoreFiles(files: File[], onProgress?: (progress: number) => void) {
   const db = await getDb();
+  const root = await navigator.storage.getDirectory();
 
   let processedCount = 0;
   const totalFiles = files.length;
   const CHUNK_SIZE = 500;
-  const metadataChunk: StorableMetadata[] = [];
 
   for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
-    console.log('chunks', i)
     const chunk = files.slice(i, i + CHUNK_SIZE);
-    try {
-      const CONCURRENCY = 6; // tune 4–8
+    const metadataChunk: StorableMetadata[] = [];
 
-      await withPool(chunk, CONCURRENCY, async (file) => {
-        // OPFS write
-        await saveViaWorker(file, /*parse*/ false);
+    for (const file of chunk) {
+      try {
+        const fileHandle = await root.getFileHandle(file.name, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file);
+        await writable.close();
 
-        // (Option A) Defer parsing to a second pass (fastest ingest)
-        // (Option B) Parse now (see worker version below)
         const comfyMetadata = await parseComfyUiMetadata(file);
+
         metadataChunk.push({
           name: file.name,
           type: file.type,
@@ -176,20 +139,22 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
           model: comfyMetadata?.model ?? null,
           loras: comfyMetadata?.loras ?? [],
         });
-        processedCount++;
-      });
-    } catch (e) {
-      console.error('Error', e);
+      } catch (e) {
+        console.error(`Skipping file due to error: ${file.name}`, e);
+      }
+
+      processedCount++;
+      if (onProgress) {
+        onProgress((processedCount / totalFiles) * 100);
+      }
     }
 
-    if (onProgress) {
-      onProgress((processedCount / totalFiles) * 100);
-    }
-    console.log('metadataChunk', metadataChunk)
     if (metadataChunk.length > 0) {
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      for (const m of metadataChunk) await tx.store.add(m);
-      await tx.done;
+      await Promise.all([
+        ...metadataChunk.map(metadata => tx.store.add(metadata)),
+        tx.done
+      ]);
     }
   }
 }
@@ -231,8 +196,7 @@ export async function getStoredImageFile(id: number): Promise<File | null> {
 
   try {
     const root = await navigator.storage.getDirectory();
-    const imagesDir = await root.getDirectoryHandle('images');
-    const fileHandle = await imagesDir.getFileHandle(metadata.name);
+    const fileHandle = await root.getFileHandle(metadata.name);
     const file = await fileHandle.getFile();
 
     Object.defineProperty(file, 'webkitRelativePath', {
@@ -252,9 +216,8 @@ export async function clearImages() {
 
   try {
     const root = await navigator.storage.getDirectory();
-    const imagesDir = await root.getDirectoryHandle('images');
-    for await (const key of imagesDir.keys()) {
-      await imagesDir.removeEntry(key);
+    for await (const key of root.keys()) {
+      await root.removeEntry(key);
     }
   } catch (e) {
     console.error("Failed to clear Origin Private File System:", e);
