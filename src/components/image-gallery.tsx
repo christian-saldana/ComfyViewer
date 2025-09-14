@@ -23,6 +23,7 @@ interface ImageGalleryProps {
 
 export function ImageGallery({
   files,
+
   selectedImageId,
   onSelectImage,
   gridCols,
@@ -37,7 +38,7 @@ export function ImageGallery({
   const [fullscreenImageAlt, setFullscreenImageAlt] = React.useState("");
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
-  const handleDoubleClick = async (image: StoredImage) => {
+  const openViewer = async (image: StoredImage) => {
     const file = await getStoredImageFile(image.id);
     if (file) {
       const objectUrl = URL.createObjectURL(file);
@@ -46,6 +47,42 @@ export function ImageGallery({
       setIsViewerOpen(true);
     }
   };
+
+  const handleDoubleClick = (image: StoredImage) => {
+    onSelectImage(image.id);
+    openViewer(image);
+  };
+
+  React.useEffect(() => {
+    let objectUrl: string | null = null;
+
+    const updateFullscreenImage = async () => {
+      if (isViewerOpen && selectedImageId !== null) {
+        const image = files.find(f => f.id === selectedImageId) ?? allImageMetadata.find(f => f.id === selectedImageId);
+        if (image) {
+          const file = await getStoredImageFile(image.id);
+          if (file) {
+            if (fullscreenImageSrc) {
+              URL.revokeObjectURL(fullscreenImageSrc);
+            }
+            objectUrl = URL.createObjectURL(file);
+            setFullscreenImageSrc(objectUrl);
+            setFullscreenImageAlt(image.name);
+          }
+        }
+      }
+    };
+
+    updateFullscreenImage();
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedImageId, isViewerOpen]);
+
 
   React.useEffect(() => {
     if (!isViewerOpen && fullscreenImageSrc) {
@@ -69,6 +106,7 @@ export function ImageGallery({
 
   const showPagination = totalPages > 1;
   const isSingleColumn = gridCols === 1;
+  const allImageMetadata = files;
 
   return (
     <>
