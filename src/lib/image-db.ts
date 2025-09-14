@@ -4,8 +4,9 @@ import { openDB, DBSchema } from 'idb';
 import { parseComfyUiMetadata } from './comfy-parser';
 
 const DB_NAME = 'image-viewer-db';
-const STORE_NAME = 'images';
-const DB_VERSION = 11;
+const METADATA_STORE_NAME = 'images';
+const IMAGE_FILES_STORE_NAME = 'image_files';
+const DB_VERSION = 12;
 
 // This is the object we'll work with in the application
 export interface StoredImage {
@@ -51,7 +52,7 @@ interface StorableMetadata {
 }
 
 interface MyDB extends DBSchema {
-  [STORE_NAME]: {
+  [METADATA_STORE_NAME]: {
     key: number;
     value: StorableMetadata;
     indexes: {
@@ -71,30 +72,42 @@ interface MyDB extends DBSchema {
       'by-loras': string;
     };
   };
+  [IMAGE_FILES_STORE_NAME]: {
+    key: number;
+    value: File;
+  };
 }
 
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 11) {
-        if (db.objectStoreNames.contains(STORE_NAME)) {
-          db.deleteObjectStore(STORE_NAME);
+      if (oldVersion < 12) {
+        // If the old metadata store exists, delete it to start fresh with the new structure.
+        if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+          db.deleteObjectStore(METADATA_STORE_NAME);
         }
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('by-path', 'webkitRelativePath');
-        store.createIndex('by-lastModified', 'lastModified');
-        store.createIndex('by-size', 'size');
-        store.createIndex('by-name', 'name');
-        store.createIndex('by-workflow', 'workflow');
-        store.createIndex('by-prompt', 'prompt');
-        store.createIndex('by-negativePrompt', 'negativePrompt');
-        store.createIndex('by-seed', 'seed');
-        store.createIndex('by-cfg', 'cfg');
-        store.createIndex('by-steps', 'steps');
-        store.createIndex('by-sampler', 'sampler');
-        store.createIndex('by-scheduler', 'scheduler');
-        store.createIndex('by-model', 'model');
-        store.createIndex('by-loras', 'loras', { multiEntry: true });
+        // If an old files store exists (from a previous attempt or different schema), delete it.
+        if (db.objectStoreNames.contains(IMAGE_FILES_STORE_NAME)) {
+          db.deleteObjectStore(IMAGE_FILES_STORE_NAME);
+        }
+
+        const metadataStore = db.createObjectStore(METADATA_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+        metadataStore.createIndex('by-path', 'webkitRelativePath');
+        metadataStore.createIndex('by-lastModified', 'lastModified');
+        metadataStore.createIndex('by-size', 'size');
+        metadataStore.createIndex('by-name', 'name');
+        metadataStore.createIndex('by-workflow', 'workflow');
+        metadataStore.createIndex('by-prompt', 'prompt');
+        metadataStore.createIndex('by-negativePrompt', 'negativePrompt');
+        metadataStore.createIndex('by-seed', 'seed');
+        metadataStore.createIndex('by-cfg', 'cfg');
+        metadataStore.createIndex('by-steps', 'steps');
+        metadataStore.createIndex('by-sampler', 'sampler');
+        metadataStore.createIndex('by-scheduler', 'scheduler');
+        metadataStore.createIndex('by-model', 'model');
+        metadataStore.createIndex('by-loras', 'loras', { multiEntry: true });
+
+        db.createObjectStore(IMAGE_FILES_STORE_NAME);
       }
     },
   });
@@ -102,59 +115,49 @@ async function getDb() {
 
 async function processAndStoreFiles(files: File[], onProgress?: (progress: number) => void) {
   const db = await getDb();
-  const root = await navigator.storage.getDirectory();
-
   let processedCount = 0;
   const totalFiles = files.length;
-  const CHUNK_SIZE = 500;
 
-  for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
-    const chunk = files.slice(i, i + CHUNK_SIZE);
-    const metadataChunk: StorableMetadata[] = [];
+  for (const file of files) {
+    try {
+      const comfyMetadata = await parseComfyUiMetadata(file);
 
-    for (const file of chunk) {
-      try {
-        const fileHandle = await root.getFileHandle(file.name, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(file);
-        await writable.close();
+      const metadata: StorableMetadata = {
+        name: file.name,
+        type: file.type,
+        lastModified: file.lastModified,
+        webkitRelativePath: file.webkitRelativePath,
+        thumbnail: '',
+        size: file.size,
+        workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
+        prompt: comfyMetadata?.prompt ?? null,
+        negativePrompt: comfyMetadata?.negativePrompt ?? null,
+        seed: comfyMetadata ? String(comfyMetadata.seed) : null,
+        cfg: comfyMetadata ? String(comfyMetadata.cfg) : null,
+        steps: comfyMetadata ? String(comfyMetadata.steps) : null,
+        sampler: comfyMetadata?.sampler ?? null,
+        scheduler: comfyMetadata?.scheduler ?? null,
+        model: comfyMetadata?.model ?? null,
+        loras: comfyMetadata?.loras ?? [],
+      };
 
-        const comfyMetadata = await parseComfyUiMetadata(file);
+      // Use a single transaction to ensure metadata and file are linked.
+      const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite');
+      const metadataStore = tx.objectStore(METADATA_STORE_NAME);
+      const fileStore = tx.objectStore(IMAGE_FILES_STORE_NAME);
 
-        metadataChunk.push({
-          name: file.name,
-          type: file.type,
-          lastModified: file.lastModified,
-          webkitRelativePath: file.webkitRelativePath,
-          thumbnail: '',
-          size: file.size,
-          workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
-          prompt: comfyMetadata?.prompt ?? null,
-          negativePrompt: comfyMetadata?.negativePrompt ?? null,
-          seed: comfyMetadata ? String(comfyMetadata.seed) : null,
-          cfg: comfyMetadata ? String(comfyMetadata.cfg) : null,
-          steps: comfyMetadata ? String(comfyMetadata.steps) : null,
-          sampler: comfyMetadata?.sampler ?? null,
-          scheduler: comfyMetadata?.scheduler ?? null,
-          model: comfyMetadata?.model ?? null,
-          loras: comfyMetadata?.loras ?? [],
-        });
-      } catch (e) {
-        console.error(`Skipping file due to error: ${file.name}`, e);
-      }
+      const metadataId = await metadataStore.add(metadata);
+      await fileStore.add(file, metadataId);
 
-      processedCount++;
-      if (onProgress) {
-        onProgress((processedCount / totalFiles) * 100);
-      }
+      await tx.done;
+
+    } catch (e) {
+      console.error(`Skipping file due to error: ${file.name}`, e);
     }
 
-    if (metadataChunk.length > 0) {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      await Promise.all([
-        ...metadataChunk.map(metadata => tx.store.add(metadata)),
-        tx.done
-      ]);
+    processedCount++;
+    if (onProgress) {
+      onProgress((processedCount / totalFiles) * 100);
     }
   }
 }
@@ -178,7 +181,7 @@ export async function addNewImages(files: File[], onProgress?: (progress: number
 
 export async function getAllStoredImageMetadata(): Promise<StoredImage[]> {
   const db = await getDb();
-  const tx = db.transaction(STORE_NAME, 'readonly');
+  const tx = db.transaction(METADATA_STORE_NAME, 'readonly');
   const store = tx.store;
   const images: StoredImage[] = [];
   let cursor = await store.openCursor();
@@ -191,35 +194,30 @@ export async function getAllStoredImageMetadata(): Promise<StoredImage[]> {
 
 export async function getStoredImageFile(id: number): Promise<File | null> {
   const db = await getDb();
-  const metadata = await db.get(STORE_NAME, id);
-  if (!metadata) return null;
+  
+  // Fetch both metadata and the file blob in parallel
+  const [metadata, file] = await Promise.all([
+    db.get(METADATA_STORE_NAME, id),
+    db.get(IMAGE_FILES_STORE_NAME, id)
+  ]);
 
-  try {
-    const root = await navigator.storage.getDirectory();
-    const fileHandle = await root.getFileHandle(metadata.name);
-    const file = await fileHandle.getFile();
+  if (!metadata || !file) return null;
 
-    Object.defineProperty(file, 'webkitRelativePath', {
-      value: metadata.webkitRelativePath,
-      writable: false,
-    });
-    return file;
-  } catch (e) {
-    console.error(`Failed to retrieve file "${metadata.name}" from OPFS. It may have been deleted or moved.`, e);
-    return null;
-  }
+  // Re-attach the webkitRelativePath to the file object for consistency
+  Object.defineProperty(file, 'webkitRelativePath', {
+    value: metadata.webkitRelativePath,
+    writable: false,
+    configurable: true,
+  });
+
+  return file;
 }
 
 export async function clearImages() {
   const db = await getDb();
-  await db.clear(STORE_NAME);
-
-  try {
-    const root = await navigator.storage.getDirectory();
-    for await (const key of root.keys()) {
-      await root.removeEntry(key);
-    }
-  } catch (e) {
-    console.error("Failed to clear Origin Private File System:", e);
-  }
+  // Clear both object stores
+  await Promise.all([
+    db.clear(METADATA_STORE_NAME),
+    db.clear(IMAGE_FILES_STORE_NAME)
+  ]);
 }
