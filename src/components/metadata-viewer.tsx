@@ -106,7 +106,7 @@ export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps
           </ul>
         </div>
 
-        {imageMetadata.type === "image/png" && (
+        {imageMetadata.workflow && (
           <>
             <Separator />
             <div className="p-4">

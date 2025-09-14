@@ -1,4 +1,5 @@
 import { getMetadata } from 'meta-png';
+import ExifReader from 'exif-reader';
 
 export interface ComfyMetadata {
   prompt: string;
@@ -52,18 +53,52 @@ const findPromptText = (workflow: any, startLink: any): string => {
 };
 
 export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | null> {
-  if (file.type !== 'image/png') {
-    return null;
-  }
-
   try {
     const buffer = await file.arrayBuffer();
-    const pngBytes = new Uint8Array(buffer);
-    const promptText = getMetadata(pngBytes, "prompt");
+    const view = new Uint8Array(buffer);
 
-    if (!promptText) {
-      return null; // No metadata, but not an error.
+    let promptText: string | null = null;
+
+    // Strategy 1: Try to parse as PNG and get 'prompt' metadata
+    if (file.type === 'image/png') {
+      try {
+        promptText = getMetadata(view, "prompt");
+      } catch (e) {
+        console.warn(`Could not read 'prompt' chunk from PNG ${file.name}, trying other methods.`, e);
+      }
     }
+
+    // Strategy 2: Try to parse EXIF data (for JPEG, WebP, etc.)
+    if (!promptText) {
+      try {
+        const tags = ExifReader(buffer);
+        // ComfyUI often stores the workflow in the UserComment EXIF tag.
+        const userComment: Uint8Array | undefined = tags?.UserComment;
+
+        if (userComment) {
+          // The UserComment is a Uint8Array. We need to decode it.
+          // It's often prefixed (e.g., with 'UNICODE\0...'), so we find the first '{' to get the JSON.
+          const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
+          const commentString = decoder.decode(userComment);
+          const jsonStartIndex = commentString.indexOf('{');
+          
+          if (jsonStartIndex !== -1) {
+            promptText = commentString.substring(jsonStartIndex);
+          }
+        }
+      } catch (e) {
+        // This is expected if the file has no EXIF data or is not a supported format.
+        // We can safely ignore this error.
+      }
+    }
+
+    // If no metadata was found with any strategy, return null.
+    if (!promptText) {
+      return null;
+    }
+
+    // --- From here, the logic is the same as before ---
+    // We have the workflow JSON string in `promptText`, now we parse it.
 
     const jsonStart = promptText.indexOf("{");
     const jsonEnd = promptText.lastIndexOf("}");
