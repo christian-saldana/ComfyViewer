@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { StoredImage } from "@/lib/image-db";
+import { Badge } from "@/components/ui/badge";
 
 interface MetadataViewerProps {
   imageFile: File | null;
@@ -115,6 +116,16 @@ export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps
               {hasGeneratorMetadata ? (
                 <>
                   <ul className="space-y-3">
+                    {imageMetadata.model && <MetadataItem
+                      label="Model"
+                      value={imageMetadata.model}
+                    />}
+                    {imageMetadata.loras && imageMetadata.loras.length > 0 && <MetadataItem
+                      label="LoRAs"
+                      value={<div className="flex flex-wrap gap-1 pt-1">
+                        {imageMetadata.loras.map((lora, i) => <Badge key={`${lora}-${i}`} variant="secondary">{lora}</Badge>)}
+                      </div>}
+                    />}
                     {imageMetadata.prompt && <MetadataItem
                       label="Prompt"
                       value={imageMetadata.prompt}

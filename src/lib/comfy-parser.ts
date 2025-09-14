@@ -8,6 +8,8 @@ export interface ComfyMetadata {
   steps: number | string;
   sampler: string;
   scheduler: string;
+  model: string | null;
+  loras: string[];
   fullWorkflow: object;
 }
 
@@ -78,11 +80,21 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
         ["KSampler", "KSamplerAdvanced", "SharkSampler_Beta"].includes(node.class_type)
     );
 
+    const modelLoaderNode = Object.values(workflow).find(
+      (node: any) => node.class_type === "CheckpointLoaderSimple"
+    ) as any;
+    const model = modelLoaderNode?.inputs?.ckpt_name ?? null;
+
+    const loraLoaderNodes = Object.values(workflow).filter(
+      (node: any) => node.class_type === "LoraLoader"
+    ) as any[];
+    const loras = loraLoaderNodes.map(node => node.inputs.lora_name).filter(Boolean);
+
     if (!ksamplerNodeEntry) {
       // Can't find a sampler, but we can still show the full workflow JSON.
       return {
         prompt: "N/A", negativePrompt: "N/A", seed: "N/A", cfg: "N/A",
-        steps: "N/A", sampler: "N/A", scheduler: "N/A", fullWorkflow: workflow,
+        steps: "N/A", sampler: "N/A", scheduler: "N/A", model, loras, fullWorkflow: workflow,
       };
     }
 
@@ -118,6 +130,8 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
       steps: resolveValue(workflow, inputs.steps) ?? "N/A",
       sampler: resolveValue(workflow, inputs.sampler_name || inputs.sampler) ?? "N/A",
       scheduler: resolveValue(workflow, inputs.scheduler) ?? "N/A",
+      model,
+      loras,
       fullWorkflow: workflow,
     };
 

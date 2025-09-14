@@ -369,13 +369,13 @@ export default function Home() {
     const parentPath = imageMetadata.webkitRelativePath.substring(0, imageMetadata.webkitRelativePath.lastIndexOf('/'));
 
     setSelectedImageId(id);
-    
+
     if (parentPath !== selectedPath) {
-        isJumpingRef.current = true;
-        setSelectedPath(parentPath);
-        setJumpToImageId(id);
+      isJumpingRef.current = true;
+      setSelectedPath(parentPath);
+      setJumpToImageId(id);
     } else {
-        setJumpToImageId(id);
+      setJumpToImageId(id);
     }
   };
 
@@ -401,7 +401,7 @@ export default function Home() {
     <div className="grid h-full grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-4">
-          
+
           <h1 className="text-xl font-bold">Image Viewer</h1>
           {isLoading && progress > 0 && progress < 100 && (
             <div className="flex w-48 items-center gap-2">
@@ -413,6 +413,8 @@ export default function Home() {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <ThemeToggle />
+          </div>
+          <div className="flex w-48 items-center gap-2">
             <Label htmlFor="grid-slider" className="whitespace-nowrap">
               Image Size
             </Label>

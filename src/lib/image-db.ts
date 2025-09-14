@@ -5,7 +5,7 @@ import { parseComfyUiMetadata } from './comfy-parser';
 
 const DB_NAME = 'image-viewer-db';
 const STORE_NAME = 'images';
-const DB_VERSION = 10;
+const DB_VERSION = 11;
 
 // This is the object we'll work with in the application
 export interface StoredImage {
@@ -25,6 +25,8 @@ export interface StoredImage {
   steps: string | null;
   sampler: string | null;
   scheduler: string | null;
+  model: string | null;
+  loras: string[];
 }
 
 // This interface defines the shape of the data we'll store in IndexedDB.
@@ -44,6 +46,8 @@ interface StorableMetadata {
   steps: string | null;
   sampler: string | null;
   scheduler: string | null;
+  model: string | null;
+  loras: string[];
 }
 
 interface MyDB extends DBSchema {
@@ -63,6 +67,8 @@ interface MyDB extends DBSchema {
       'by-steps': string;
       'by-sampler': string;
       'by-scheduler': string;
+      'by-model': string;
+      'by-loras': string;
     };
   };
 }
@@ -70,7 +76,7 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 10) {
+      if (oldVersion < 11) {
         if (db.objectStoreNames.contains(STORE_NAME)) {
           db.deleteObjectStore(STORE_NAME);
         }
@@ -87,6 +93,8 @@ async function getDb() {
         store.createIndex('by-steps', 'steps');
         store.createIndex('by-sampler', 'sampler');
         store.createIndex('by-scheduler', 'scheduler');
+        store.createIndex('by-model', 'model');
+        store.createIndex('by-loras', 'loras', { multiEntry: true });
       }
     },
   });
@@ -128,6 +136,8 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
           steps: comfyMetadata ? String(comfyMetadata.steps) : null,
           sampler: comfyMetadata?.sampler ?? null,
           scheduler: comfyMetadata?.scheduler ?? null,
+          model: comfyMetadata?.model ?? null,
+          loras: comfyMetadata?.loras ?? [],
         });
       } catch (e) {
         console.error(`Skipping file due to error: ${file.name}`, e);
