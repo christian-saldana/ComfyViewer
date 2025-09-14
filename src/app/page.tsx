@@ -251,6 +251,44 @@ export default function Home() {
     }
   }, [jumpToImageId, processedImages, itemsPerPage]);
 
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        if (selectedImageId === null || processedImages.length === 0) {
+          return;
+        }
+
+        const currentIndex = processedImages.findIndex(img => img.id === selectedImageId);
+        if (currentIndex === -1) {
+          return;
+        }
+
+        let nextIndex;
+        if (event.key === 'ArrowRight') {
+          nextIndex = Math.min(currentIndex + 1, processedImages.length - 1);
+        } else { // ArrowLeft
+          nextIndex = Math.max(currentIndex - 1, 0);
+        }
+
+        if (nextIndex !== currentIndex) {
+          const nextImage = processedImages[nextIndex];
+          setSelectedImageId(nextImage.id);
+
+          const newImagePage = Math.floor(nextIndex / itemsPerPage) + 1;
+          if (newImagePage !== currentPage) {
+            setCurrentPage(newImagePage);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedImageId, processedImages, itemsPerPage, currentPage]);
+
   const handleSliderChange = (value: number[]) => {
     const newGridCols = MAX_COLS + MIN_COLS - value[0];
     setGridCols(newGridCols);
