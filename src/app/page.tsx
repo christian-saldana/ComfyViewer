@@ -43,6 +43,7 @@ import { Progress } from "@/components/ui/progress";
 import { AdvancedSearchForm, AdvancedSearchState } from "@/components/advanced-search-form";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
@@ -400,6 +401,7 @@ export default function Home() {
     <div className="grid h-full grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-4">
+          
           <h1 className="text-xl font-bold">Image Viewer</h1>
           {isLoading && progress > 0 && progress < 100 && (
             <div className="flex w-48 items-center gap-2">
@@ -409,7 +411,8 @@ export default function Home() {
           )}
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex w-48 items-center gap-2">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Label htmlFor="grid-slider" className="whitespace-nowrap">
               Image Size
             </Label>
