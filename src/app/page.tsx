@@ -205,8 +205,10 @@ export default function Home() {
   }, [processedImages, currentPage, itemsPerPage]);
 
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery, debouncedAdvancedSearch]);
+    if (jumpToImageId === null) {
+      setCurrentPage(1);
+    }
+  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery, debouncedAdvancedSearch, jumpToImageId]);
 
   React.useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -313,10 +315,10 @@ export default function Home() {
     const parentPath = imageMetadata.webkitRelativePath.substring(0, imageMetadata.webkitRelativePath.lastIndexOf('/'));
 
     setSelectedImageId(id);
-    setJumpToImageId(id);
-
+    
     if (parentPath !== selectedPath) {
         setSelectedPath(parentPath);
+        setJumpToImageId(id);
     }
   };
 
