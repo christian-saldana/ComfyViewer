@@ -100,6 +100,7 @@ export default function Home() {
   const [isRefreshMode, setIsRefreshMode] = React.useState(false);
   const [jumpToImageId, setJumpToImageId] = React.useState<number | null>(null);
 
+  const isJumpingRef = React.useRef(false);
   const debouncedFilterQuery = useDebounce(filterQuery, 300);
   const debouncedAdvancedSearch = useDebounce(advancedSearchState, 300);
 
@@ -205,10 +206,11 @@ export default function Home() {
   }, [processedImages, currentPage, itemsPerPage]);
 
   React.useEffect(() => {
-    if (jumpToImageId === null) {
-      setCurrentPage(1);
+    if (isJumpingRef.current) {
+      return;
     }
-  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery, debouncedAdvancedSearch, jumpToImageId]);
+    setCurrentPage(1);
+  }, [selectedPath, viewSubfolders, sortBy, sortOrder, itemsPerPage, debouncedFilterQuery, debouncedAdvancedSearch]);
 
   React.useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -243,6 +245,7 @@ export default function Home() {
       if (imageIndex !== -1) {
         const page = Math.floor(imageIndex / itemsPerPage) + 1;
         setCurrentPage(page);
+        isJumpingRef.current = false;
       }
       setJumpToImageId(null);
     }
@@ -317,7 +320,10 @@ export default function Home() {
     setSelectedImageId(id);
     
     if (parentPath !== selectedPath) {
+        isJumpingRef.current = true;
         setSelectedPath(parentPath);
+        setJumpToImageId(id);
+    } else {
         setJumpToImageId(id);
     }
   };
