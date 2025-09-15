@@ -6,16 +6,15 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { AppHeader } from "@/components/app-header";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
-import { AppHeader } from "@/components/app-header";
 import { Sidebar } from "@/components/sidebar";
-import { useImageStore } from "@/hooks/use-image-store";
 import { useImageFiltering } from "@/hooks/use-image-filtering";
-import { usePagination } from "@/hooks/use-pagination";
 import { useImageSelection } from "@/hooks/use-image-selection";
+import { useImageStore } from "@/hooks/use-image-store";
 import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
-import { FileTreeNode } from "@/lib/file-tree";
+import { usePagination } from "@/hooks/use-pagination";
 
 export default function Home() {
   const [selectedPath, setSelectedPath] = React.useState<string>("");

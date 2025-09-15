@@ -1,15 +1,16 @@
 "use client";
 
 import * as React from "react";
-import {
-  storeImages,
-  clearImages,
-  StoredImage,
-  getAllStoredImageMetadata,
-  addNewImages,
-} from "@/lib/image-db";
-import { buildFileTree, FileTreeNode } from "@/lib/file-tree";
 import { toast } from "sonner";
+
+import { buildFileTree } from "@/lib/file-tree";
+import {
+  addNewImages,
+  clearImages,
+  getAllStoredImageMetadata,
+  StoredImage,
+  storeImages,
+} from "@/lib/image-db";
 
 export function useImageStore() {
   const [allImageMetadata, setAllImageMetadata] = React.useState<StoredImage[]>([]);

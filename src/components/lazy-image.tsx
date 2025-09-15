@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
+
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { getStoredImageFile } from "@/lib/image-db";
 
 interface LazyImageProps {

@@ -1,14 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Folder, FolderOpen, FileImage } from "lucide-react";
+import { FileImage, Folder, FolderOpen } from "lucide-react";
+
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 import { FileTreeNode } from "@/lib/file-tree";
+import { cn } from "@/lib/utils";
 
 interface FileTreeProps {
   tree: FileTreeNode;

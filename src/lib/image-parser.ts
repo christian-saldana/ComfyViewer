@@ -18,7 +18,7 @@ export interface ComfyMetadata {
 
 // --- Workflow Extraction ---
 
-function getWorkflowStringFromPng(view: Uint8Array): string | null {
+function getWorkflowStringFromPng(view: Uint8Array): string | null | undefined {
   try {
     return getMetadata(view, "prompt");
   } catch (e) {
@@ -53,7 +53,7 @@ function getWorkflowStringFromExif(buffer: ArrayBuffer): string | null {
 
 async function getWorkflowJson(file: File): Promise<object | null> {
   const buffer = await file.arrayBuffer();
-  let workflowString: string | null = null;
+  let workflowString: string | null | undefined = null;
 
   if (file.type === 'image/png') {
     workflowString = getWorkflowStringFromPng(new Uint8Array(buffer));
@@ -95,7 +95,7 @@ const findPromptText = (workflow: any, startLink: any): string => {
   for (let i = 0; i < 10; i++) { // Safety break for cycles
     if (typeof currentLink === 'string') return currentLink;
     if (!Array.isArray(currentLink) || typeof currentLink[0] !== 'string' || !workflow[currentLink[0]]) break;
-    
+
     const sourceNode = workflow[currentLink[0]];
     if (!sourceNode?.inputs) break;
 

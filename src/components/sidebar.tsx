@@ -3,12 +3,22 @@
 import * as React from "react";
 import {
   Folder,
-  Trash2,
+  RefreshCw,
   Search,
   SlidersHorizontal,
-  RefreshCw,
+  Trash2,
 } from "lucide-react";
+
+import { AdvancedSearchForm, AdvancedSearchState } from "@/components/advanced-search-form";
+import { FileTree } from "@/components/file-tree";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -17,11 +27,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { AdvancedSearchForm, AdvancedSearchState } from "@/components/advanced-search-form";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileTree } from "./file-tree";
 import { FileTreeNode } from "@/lib/file-tree";
 
 interface SidebarProps {

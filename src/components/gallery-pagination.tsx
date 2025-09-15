@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+
 import {
   Pagination,
   PaginationContent,
@@ -17,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import { Label } from "./ui/label";
 
 interface GalleryPaginationProps {

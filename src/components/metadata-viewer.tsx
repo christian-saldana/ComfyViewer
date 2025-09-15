@@ -1,31 +1,31 @@
 "use client";
 
 import * as React from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, Maximize, Copy } from "lucide-react";
+import { Copy, Info, Maximize } from "lucide-react";
+import { toast } from "sonner";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { StoredImage } from "@/lib/image-db";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { StoredImage } from "@/lib/image-db";
 
 interface MetadataViewerProps {
   imageFile: File | null;
@@ -102,7 +102,7 @@ const LongMetadataItem = ({
   );
 };
 
-export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps) {
+export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
   const [isWorkflowFullscreen, setIsWorkflowFullscreen] = React.useState(false);
   const [fullWorkflow, setFullWorkflow] = React.useState<object | null>(null);
 
@@ -188,7 +188,7 @@ export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps
                         value={imageMetadata.negativePrompt}
                         isCopyable
                       />
-                      <div className="gap-x-4 gap-y-3 pt-2">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-2">
                         {imageMetadata.seed && <MetadataItem label="Seed" value={String(imageMetadata.seed)} isCopyable />}
                         {imageMetadata.cfg && <MetadataItem
                           label="CFG Scale"

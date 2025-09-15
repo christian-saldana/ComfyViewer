@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+
 import { StoredImage } from "@/lib/image-db";
 
 interface KeyboardNavigationProps {

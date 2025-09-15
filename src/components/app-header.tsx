@@ -1,13 +1,11 @@
 "use client";
 
 import * as React from "react";
-import {
-  ArrowUpNarrowWide,
-  ArrowDownWideNarrow,
-} from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -15,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 type SortBy = "lastModified" | "size";

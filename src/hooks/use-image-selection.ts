@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { StoredImage, getStoredImageFile } from "@/lib/image-db";
+
+import { getStoredImageFile, StoredImage } from "@/lib/image-db";
 
 export function useImageSelection(allImageMetadata: StoredImage[]) {
   const [selectedImageId, setSelectedImageId] = React.useState<number | null>(null);

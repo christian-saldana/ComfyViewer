@@ -1,13 +1,8 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogClose,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { X } from "lucide-react";
+
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface ImageViewerDialogProps {
   src: string | null;

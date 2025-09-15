@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
-import { ImageViewerDialog } from "./image-viewer-dialog";
-import { StoredImage, getStoredImageFile } from "@/lib/image-db";
-import { GalleryPagination } from "./gallery-pagination";
-import { LazyImage } from "./lazy-image";
+
+import { GalleryPagination } from "@/components/gallery-pagination";
+import { ImageViewerDialog } from "@/components/image-viewer-dialog";
+import { LazyImage } from "@/components/lazy-image";
+import { getStoredImageFile, StoredImage } from "@/lib/image-db";
+import { cn } from "@/lib/utils";
 
 interface ImageGalleryProps {
   files: StoredImage[];
