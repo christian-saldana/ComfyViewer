@@ -54,18 +54,8 @@ const findPromptText = (workflow: any, startLink: any): string => {
 
 
 function extractPromptJson(prompt: string): string | null {
-  // Match everything after "Prompt:" up to the end of the string
-  const match = prompt.match(/Prompt:(\{.*\})$/s);
-  if (!match) {
-    return null;
-  }
-
-  try {
-    return match[1]
-  } catch (err) {
-    console.error("Failed to parse Prompt JSON:", err);
-    return null;
-  }
+  const match = prompt.match(/prompt:(\{.*\})$/is);
+  return match ? match[1] : null;
 }
 
 export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | null> {
@@ -93,6 +83,7 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
           tags.ImageDescription, tags.Description,
           tags.XMP?.description, tags.Software,
           tags.Comment, tags?.Make?.description,
+          tags?.Model?.description
         ].flatMap(v => Array.isArray(v) ? v : [v]).filter(Boolean);
 
         for (const c of candidates) {
@@ -101,7 +92,7 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
         }
 
       } catch (e) {
-        console.log('Error parsing non-png file:', e)
+        console.error('Error parsing non-png file:', e)
       }
     }
 
