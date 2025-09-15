@@ -1,5 +1,5 @@
 import { getMetadata } from 'meta-png';
-import ExifReader from 'exif-reader';
+import ExifReader from 'exifreader';
 
 export interface ComfyMetadata {
   prompt: string;
@@ -52,17 +52,36 @@ const findPromptText = (workflow: any, startLink: any): string => {
   return "N/A";
 };
 
+
+function extractPromptJson(prompt: string): string | null {
+  // Match everything after "Prompt:" up to the end of the string
+  console.log('prompt', prompt)
+  const match = prompt.match(/Prompt:(\{.*\})$/s);
+  if (!match) {
+    return null;
+  }
+  console.log('match', match[1])
+  // const promptText = match[1].substring(jsonStart, jsonEnd + 1).replace(/NaN/g, "null");
+
+  try {
+    return match[1]
+  } catch (err) {
+    console.error("Failed to parse Prompt JSON:", err);
+    return null;
+  }
+}
+
 export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | null> {
   try {
     const buffer = await file.arrayBuffer();
     const view = new Uint8Array(buffer);
-
-    let promptText: string | null = null;
-
+    console.log('in function', view)
+    let promptText: string | null | undefined = null;
     // Strategy 1: Try to parse as PNG and get 'prompt' metadata
     if (file.type === 'image/png') {
       try {
         promptText = getMetadata(view, "prompt");
+        console.log('promptText', promptText)
       } catch (e) {
         console.warn(`Could not read 'prompt' chunk from PNG ${file.name}, trying other methods.`, e);
       }
@@ -70,23 +89,28 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
 
     // Strategy 2: Try to parse EXIF data (for JPEG, WebP, etc.)
     if (!promptText) {
+      console.log('in promptText')
       try {
-        const tags = ExifReader(buffer);
-        // ComfyUI often stores the workflow in the UserComment EXIF tag.
-        const userComment: Uint8Array | undefined = tags?.UserComment;
+        const tags = ExifReader.load(buffer);
 
-        if (userComment) {
-          // The UserComment is a Uint8Array. We need to decode it.
-          // It's often prefixed (e.g., with 'UNICODE\0...'), so we find the first '{' to get the JSON.
-          const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
-          const commentString = decoder.decode(userComment);
-          const jsonStartIndex = commentString.indexOf('{');
-          
-          if (jsonStartIndex !== -1) {
-            promptText = commentString.substring(jsonStartIndex);
-          }
+        const candidates = [
+          tags.PNGPrompt, tags.PNGWorkflow,                 // some builds map these
+          tags["PNG:prompt"], tags["PNG:workflow"],         // direct tags
+          tags.ImageDescription, tags.Description,
+          tags.XMP?.description, tags.Software,
+          tags.Comment, tags?.Make?.description,
+        ].flatMap(v => Array.isArray(v) ? v : [v]).filter(Boolean);
+
+        let workflow = null, prompt = null;
+
+        for (const c of candidates) {
+          if (typeof c !== "string") continue;
+          promptText = extractPromptJson(c)
         }
+
+        console.log('workflow', workflow, 'prompt', prompt)
       } catch (e) {
+        console.log('e', e)
         // This is expected if the file has no EXIF data or is not a supported format.
         // We can safely ignore this error.
       }

@@ -120,7 +120,7 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
     return;
   }
 
-  const onProgressThrottled = onProgress ? (p: number) => requestAnimationFrame(() => onProgress(p)) : () => {};
+  const onProgressThrottled = onProgress ? (p: number) => requestAnimationFrame(() => onProgress(p)) : () => { };
   let parsedCount = 0;
 
   // Step 1: Parse all files in parallel to prepare the data.
@@ -146,7 +146,7 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
         model: comfyMetadata?.model ?? null,
         loras: comfyMetadata?.loras ?? [],
       };
-      
+
       parsedCount++;
       onProgressThrottled((parsedCount / totalFiles) * 50); // Parsing is the first 50%
 
@@ -169,7 +169,7 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
   // Step 2: Store all valid data in a single transaction.
   const db = await getDb();
   const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite');
-  
+
   let storedCount = 0;
   for (const { metadata, file } of validData) {
     try {
@@ -218,7 +218,7 @@ export async function getAllStoredImageMetadata(): Promise<StoredImage[]> {
 
 export async function getStoredImageFile(id: number): Promise<File | null> {
   const db = await getDb();
-  
+
   // Fetch both metadata and the file blob in parallel
   const [metadata, file] = await Promise.all([
     db.get(METADATA_STORE_NAME, id),

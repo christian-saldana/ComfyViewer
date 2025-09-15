@@ -571,7 +571,6 @@ export default function Home() {
         <ResizablePanel defaultSize={55}>
           <ImageGallery
             files={paginatedFiles}
-            allImageMetadata={allImageMetadata}
             selectedImageId={selectedImageId}
             onSelectImage={setSelectedImageId}
             gridCols={gridCols}
