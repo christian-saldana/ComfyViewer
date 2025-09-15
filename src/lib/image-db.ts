@@ -3,8 +3,9 @@
 import { DBSchema, openDB } from 'idb';
 
 import { parseComfyUiMetadata } from './image-parser';
+import { isFirefox, preflightQuotaOrPersist, toGiB } from './utils';
 
-const DB_NAME = 'image-viewer-db';
+const DB_NAME = 'comfy-viewer-db';
 const METADATA_STORE_NAME = 'images';
 const IMAGE_FILES_STORE_NAME = 'image_files';
 const DB_VERSION = 12;
@@ -115,6 +116,7 @@ async function getDb() {
 }
 
 async function processAndStoreFiles(files: File[], onProgress?: (progress: number) => void) {
+  console.time('store')
   const totalFiles = files.length;
   if (totalFiles === 0) {
     onProgress?.(100);
@@ -171,23 +173,64 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
   const db = await getDb();
   const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite');
 
+  const batchSize = 500
   let storedCount = 0;
-  for (const { metadata, file } of validData) {
+  for (let i = 0; i < totalToStore; i += batchSize) {
     try {
-      const metadataId = await tx.objectStore(METADATA_STORE_NAME).add(metadata);
-      await tx.objectStore(IMAGE_FILES_STORE_NAME).add(file, metadataId);
+      const chunk = validData.slice(i, i + batchSize);
+      const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite')
+      const meta = tx.objectStore(METADATA_STORE_NAME);
+      const files = tx.objectStore(IMAGE_FILES_STORE_NAME);
+
+      const perItemPromises = chunk.map(async ({ metadata, file }) => {
+        try {
+          const metadataId = await meta.add(metadata);
+          await files.add(file, metadataId);
+          storedCount++;
+          onProgress?.(50 + (storedCount / totalToStore) * 50);
+        } catch (e) {
+          console.error(`Skipping file due to error during storage: ${file.name}`, e);
+        }
+      });
+
+      await Promise.allSettled(perItemPromises);
+      await tx.done; // commit point for this chunk
     } catch (e) {
-      console.error(`Skipping file due to error during storage: ${file.name}`, e);
+      console.error(`Skipping file due to error during storage`, e);
     }
-    storedCount++;
+    // storedCount++;
     onProgressThrottled(50 + (storedCount / totalToStore) * 50); // Storing is the second 50%
   }
 
   await tx.done;
   onProgressThrottled(100);
+  console.timeEnd('store')
 }
 
 export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
+  // Calculate incoming bytes
+  const incomingBytes = files.reduce((sum, f) => sum + (f.size ?? 0), 0);
+
+  // Optional: special copy for Firefox users
+  const confirmPrompt = async () => {
+    const msg = isFirefox()
+      ? 'Firefox limits this site to ~10 GiB unless you allow persistent storage. Allow it so we can store more images?'
+      : 'Allow persistent storage so we can store more images and reduce the chance of data eviction?';
+    return window.confirm(msg);
+  };
+
+  const { info, canProceed } = await preflightQuotaOrPersist(incomingBytes, confirmPrompt);
+  console.log('info', info, 'canProceed', canProceed)
+  if (!canProceed) {
+    const neededGiB = toGiB(incomingBytes);
+    const freeGiB = toGiB(Math.max(0, info.quota - info.usage));
+    throw new Error(
+      `Not enough browser storage available.\n` +
+      `Needed ~${neededGiB.toFixed(2)} GiB, free ~${freeGiB.toFixed(2)} GiB.\n` +
+      `Tip: enable persistent storage and/or import fewer files at once.`
+    );
+  }
+
   await clearImages();
   await processAndStoreFiles(files, onProgress);
 }
@@ -197,10 +240,31 @@ export async function addNewImages(files: File[], onProgress?: (progress: number
   const existingPaths = new Set(existingMetadata.map(img => img.webkitRelativePath));
   const newFiles = files.filter(file => !existingPaths.has(file.webkitRelativePath));
 
-  if (newFiles.length > 0) {
-    await processAndStoreFiles(newFiles, onProgress);
+  if (newFiles.length === 0) return 0;
+
+  // Quota preflight for only the new files
+  const incomingBytes = newFiles.reduce((sum, f) => sum + (f.size ?? 0), 0);
+
+  const confirmPrompt = async () => {
+    const msg = isFirefox()
+      ? 'Firefox limits this site to ~10 GiB unless you allow persistent storage. Allow it so we can store more images?'
+      : 'Allow persistent storage so we can store more images and reduce the chance of data eviction?';
+    return window.confirm(msg);
+  };
+
+  const { info, canProceed } = await preflightQuotaOrPersist(incomingBytes, confirmPrompt);
+
+  if (!canProceed) {
+    const neededGiB = toGiB(incomingBytes);
+    const freeGiB = toGiB(Math.max(0, info.quota - info.usage));
+    throw new Error(
+      `Not enough browser storage available for new images.\n` +
+      `Needed ~${neededGiB.toFixed(2)} GiB, free ~${freeGiB.toFixed(2)} GiB.\n` +
+      `Tip: enable persistent storage and/or import fewer files at once.`
+    );
   }
 
+  await processAndStoreFiles(newFiles, onProgress);
   return newFiles.length;
 }
 

@@ -189,7 +189,7 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                         value={imageMetadata.negativePrompt}
                         isCopyable
                       />
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-2">
+                      <div className="gap-x-4 gap-y-3 pt-2">
                         {imageMetadata.seed && <MetadataItem label="Seed" value={String(imageMetadata.seed)} isCopyable />}
                         {imageMetadata.cfg && <MetadataItem
                           label="CFG Scale"

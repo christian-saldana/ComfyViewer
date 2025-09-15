@@ -4,19 +4,19 @@ import * as React from "react";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
-interface ImageViewerDialogProps {
+interface ComfyViewerDialogProps {
   src: string | null;
   alt: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ImageViewerDialog({
+export function ComfyViewerDialog({
   src,
   alt,
   open,
   onOpenChange,
-}: ImageViewerDialogProps) {
+}: ComfyViewerDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex w-auto max-w-[90vw] max-h-[90vh] items-center justify-center p-0 border-none bg-transparent">

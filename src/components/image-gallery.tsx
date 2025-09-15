@@ -4,8 +4,8 @@ import * as React from "react";
 
 import { ImageIcon } from "lucide-react";
 
+import { ComfyViewerDialog } from "@/components/comfy-viewer-dialog";
 import { GalleryPagination } from "@/components/gallery-pagination";
-import { ImageViewerDialog } from "@/components/image-viewer-dialog";
 import { LazyImage } from "@/components/lazy-image";
 import { getStoredImageFile, StoredImage } from "@/lib/image-db";
 import { cn } from "@/lib/utils";
@@ -159,7 +159,7 @@ export function ImageGallery({
           />
         )}
       </div>
-      <ImageViewerDialog
+      <ComfyViewerDialog
         src={fullscreenImageSrc}
         alt={fullscreenImageAlt}
         open={isViewerOpen}

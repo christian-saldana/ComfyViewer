@@ -3,7 +3,7 @@
 import * as React from "react";
 
 const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96, 200];
-const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
+const ITEMS_PER_PAGE_KEY = "comfy-viewer-items-per-page";
 
 export function usePagination(totalItems: number, dependencies: React.DependencyList) {
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -27,7 +27,7 @@ export function usePagination(totalItems: number, dependencies: React.Dependency
 
   React.useEffect(() => {
     setCurrentPage(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
 
   React.useEffect(() => {

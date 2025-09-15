@@ -19,7 +19,7 @@ export interface ComfyMetadata {
 // --- Type Definitions for Workflow Structure ---
 
 type Link = [string, number]; // [node_id, output_index]
-type InputValue = string | number | Link | undefined;
+type InputValue = string | number | undefined;
 
 interface WorkflowNode {
   inputs: Record<string, InputValue>;
