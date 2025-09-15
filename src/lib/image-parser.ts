@@ -1,7 +1,7 @@
 "use client";
 
-import { getMetadata } from 'meta-png';
 import ExifReader from 'exifreader';
+import { getMetadata } from 'meta-png';
 
 export interface ComfyMetadata {
   prompt: string;
@@ -18,7 +18,7 @@ export interface ComfyMetadata {
 
 // --- Workflow Extraction ---
 
-function getWorkflowStringFromPng(view: Uint8Array): string | null | undefined {
+function getWorkflowStringFromPng(view: Uint8Array): string | null {
   try {
     return getMetadata(view, "prompt");
   } catch (e) {
@@ -53,7 +53,7 @@ function getWorkflowStringFromExif(buffer: ArrayBuffer): string | null {
 
 async function getWorkflowJson(file: File): Promise<object | null> {
   const buffer = await file.arrayBuffer();
-  let workflowString: string | null | undefined = null;
+  let workflowString: string | null = null;
 
   if (file.type === 'image/png') {
     workflowString = getWorkflowStringFromPng(new Uint8Array(buffer));

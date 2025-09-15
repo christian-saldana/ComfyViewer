@@ -1,6 +1,7 @@
 "use client";
 
-import { openDB, DBSchema } from 'idb';
+import { DBSchema, openDB } from 'idb';
+
 import { parseComfyUiMetadata } from './image-parser';
 
 const DB_NAME = 'image-viewer-db';
