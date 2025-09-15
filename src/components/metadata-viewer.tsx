@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, Maximize } from "lucide-react";
+import { Info, Maximize, Copy } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -16,32 +16,91 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { StoredImage } from "@/lib/image-db";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface MetadataViewerProps {
   imageFile: File | null;
   imageMetadata: StoredImage | null;
 }
 
-// A simple component to display a metadata item
 const MetadataItem = ({
   label,
   value,
-  valueClassName,
+  isCopyable = false,
 }: {
   label: string;
   value: React.ReactNode;
-  valueClassName?: string;
+  isCopyable?: boolean;
 }) => (
-  <li>
-    <p className="text-sm font-medium text-muted-foreground">{label}</p>
-    <p className={cn("break-words text-sm", valueClassName)}>{value}</p>
-  </li>
+  <div className="grid grid-cols-3 items-start gap-x-4 gap-y-1">
+    <p className="text-sm font-medium text-muted-foreground col-span-1">{label}</p>
+    <div className="col-span-2 flex items-start gap-2">
+      <p className="break-all text-sm">{value}</p>
+      {isCopyable && typeof value === 'string' && value && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 shrink-0"
+          onClick={() => {
+            navigator.clipboard.writeText(value);
+            toast.success(`Copied ${label} to clipboard!`);
+          }}
+        >
+          <Copy className="h-3 w-3" />
+          <span className="sr-only">Copy {label}</span>
+        </Button>
+      )}
+    </div>
+  </div>
 );
+
+const LongMetadataItem = ({
+  label,
+  value,
+  isCopyable = false,
+}: {
+  label: string;
+  value: string | null;
+  isCopyable?: boolean;
+}) => {
+  if (!value) return null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        {isCopyable && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 shrink-0"
+            onClick={() => {
+              navigator.clipboard.writeText(value);
+              toast.success(`Copied ${label} to clipboard!`);
+            }}
+          >
+            <Copy className="h-3 w-3" />
+            <span className="sr-only">Copy {label}</span>
+          </Button>
+        )}
+      </div>
+      <div className="mt-1.5 w-full overflow-hidden rounded-md border bg-muted/30">
+        <ScrollArea className="h-28">
+          <p className="p-2 text-sm leading-relaxed">{value}</p>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+};
 
 export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps) {
   const [isWorkflowFullscreen, setIsWorkflowFullscreen] = React.useState(false);
@@ -75,16 +134,6 @@ export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps
     );
   }
 
-  const basicMetadata = [
-    { label: "File Name", value: imageMetadata.name },
-    { label: "File Size", value: `${(imageMetadata.size / 1024).toFixed(2)} KB` },
-    { label: "File Type", value: imageMetadata.type },
-    {
-      label: "Last Modified",
-      value: new Date(imageMetadata.lastModified).toLocaleString(),
-    },
-  ];
-
   const hasGeneratorMetadata = imageMetadata.prompt || imageMetadata.seed;
 
   return (
@@ -93,84 +142,112 @@ export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps
         <h2 className="text-lg font-semibold">Metadata</h2>
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-4">
-          <h3 className="mb-2 text-base font-semibold">File Details</h3>
-          <ul className="space-y-3">
-            {basicMetadata.map((item) => (
+        <div className="space-y-4 p-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">File Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <MetadataItem label="File Name" value={imageMetadata.name} isCopyable />
+              <MetadataItem label="File Size" value={`${(imageMetadata.size / 1024).toFixed(2)} KB`} />
+              <MetadataItem label="File Type" value={imageMetadata.type} />
               <MetadataItem
-                key={item.label}
-                label={item.label}
-                value={item.value}
+                label="Last Modified"
+                value={new Date(imageMetadata.lastModified).toLocaleString()}
               />
-            ))}
-          </ul>
-        </div>
+            </CardContent>
+          </Card>
 
-        {imageMetadata.workflow && (
-          <>
-            <Separator />
-            <div className="p-4">
-              <h3 className="mb-2 text-base font-semibold">
-                Generator Metadata
-              </h3>
-              {hasGeneratorMetadata ? (
-                <>
-                  <ul className="space-y-3">
-                    {imageMetadata.model && <MetadataItem
-                      label="Model"
-                      value={imageMetadata.model}
-                    />}
-                    {imageMetadata.loras && imageMetadata.loras.length > 0 && <MetadataItem
-                      label="LoRAs"
-                      value={<div className="flex flex-wrap gap-1 pt-1">
-                        {imageMetadata.loras.map((lora, i) => <Badge key={`${lora}-${i}`} variant="secondary">{lora}</Badge>)}
-                      </div>}
-                    />}
-                    {imageMetadata.prompt && <MetadataItem
-                      label="Prompt"
-                      value={imageMetadata.prompt}
-                      valueClassName="leading-relaxed"
-                    />}
-                    {imageMetadata.negativePrompt && <MetadataItem
-                      label="Negative Prompt"
-                      value={imageMetadata.negativePrompt}
-                      valueClassName="leading-relaxed"
-                    />}
-                    {imageMetadata.seed && <MetadataItem label="Seed" value={String(imageMetadata.seed)} />}
-                    {imageMetadata.cfg && <MetadataItem
-                      label="CFG Scale"
-                      value={String(imageMetadata.cfg)}
-                    />}
-                    {imageMetadata.steps && <MetadataItem label="Steps" value={String(imageMetadata.steps)} />}
-                    {imageMetadata.sampler && <MetadataItem
-                      label="Sampler"
-                      value={imageMetadata.sampler}
-                    />}
-                    {imageMetadata.scheduler && <MetadataItem
-                      label="Scheduler"
-                      value={imageMetadata.scheduler}
-                    />}
-                  </ul>
-                  {fullWorkflow && <Accordion type="single" collapsible className="w-full pt-4">
-                    <AccordionItem value="item-1">
-                      <div className="flex items-center justify-between">
-                        <AccordionTrigger className="flex-1">
-                          Full Workflow (JSON)
-                        </AccordionTrigger>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="ml-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsWorkflowFullscreen(true);
-                          }}
-                        >
-                          <Maximize className="h-4 w-4" />
-                        </Button>
+          {imageMetadata.workflow && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Generator Metadata</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {hasGeneratorMetadata ? (
+                  <>
+                    <div className="space-y-3">
+                      {imageMetadata.model && <MetadataItem
+                        label="Model"
+                        value={imageMetadata.model}
+                        isCopyable
+                      />}
+                      {imageMetadata.loras && imageMetadata.loras.length > 0 && <MetadataItem
+                        label="LoRAs"
+                        value={<div className="flex flex-wrap gap-1 pt-1">
+                          {imageMetadata.loras.map((lora, i) => <Badge key={`${lora}-${i}`} variant="secondary">{lora}</Badge>)}
+                        </div>}
+                      />}
+                      <LongMetadataItem
+                        label="Prompt"
+                        value={imageMetadata.prompt}
+                        isCopyable
+                      />
+                      <LongMetadataItem
+                        label="Negative Prompt"
+                        value={imageMetadata.negativePrompt}
+                        isCopyable
+                      />
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-2">
+                        {imageMetadata.seed && <MetadataItem label="Seed" value={String(imageMetadata.seed)} isCopyable />}
+                        {imageMetadata.cfg && <MetadataItem
+                          label="CFG Scale"
+                          value={String(imageMetadata.cfg)}
+                          isCopyable
+                        />}
+                        {imageMetadata.steps && <MetadataItem label="Steps" value={String(imageMetadata.steps)} isCopyable />}
+                        {imageMetadata.sampler && <MetadataItem
+                          label="Sampler"
+                          value={imageMetadata.sampler}
+                          isCopyable
+                        />}
+                        {imageMetadata.scheduler && <MetadataItem
+                          label="Scheduler"
+                          value={imageMetadata.scheduler}
+                          isCopyable
+                        />}
                       </div>
-                      <AccordionContent>
-                        <ScrollArea className="h-64 w-full resize-y overflow-auto rounded-md border bg-muted/50 p-2">
+                    </div>
+                    {fullWorkflow && <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="item-1">
+                        <div className="flex items-center justify-between">
+                          <AccordionTrigger className="flex-1 text-sm">
+                            Full Workflow (JSON)
+                          </AccordionTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="ml-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsWorkflowFullscreen(true);
+                            }}
+                          >
+                            <Maximize className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <AccordionContent>
+                          <ScrollArea className="h-64 w-full resize-y overflow-auto rounded-md border bg-muted/50 p-2">
+                            <pre className="text-xs whitespace-pre-wrap break-all">
+                              {JSON.stringify(
+                                fullWorkflow,
+                                null,
+                                2
+                              )}
+                            </pre>
+                          </ScrollArea>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>}
+                    <Dialog
+                      open={isWorkflowFullscreen}
+                      onOpenChange={setIsWorkflowFullscreen}
+                    >
+                      <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+                        <DialogHeader>
+                          <DialogTitle>Full Workflow (JSON)</DialogTitle>
+                        </DialogHeader>
+                        {fullWorkflow && <ScrollArea className="flex-1 rounded-md border bg-muted/50 p-2">
                           <pre className="text-xs whitespace-pre-wrap break-all">
                             {JSON.stringify(
                               fullWorkflow,
@@ -178,36 +255,17 @@ export function MetadataViewer({ imageFile, imageMetadata }: MetadataViewerProps
                               2
                             )}
                           </pre>
-                        </ScrollArea>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>}
-                  <Dialog
-                    open={isWorkflowFullscreen}
-                    onOpenChange={setIsWorkflowFullscreen}
-                  >
-                    <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
-                      <DialogHeader>
-                        <DialogTitle>Full Workflow (JSON)</DialogTitle>
-                      </DialogHeader>
-                      {fullWorkflow && <ScrollArea className="flex-1 rounded-md border bg-muted/50 p-2">
-                        <pre className="text-xs whitespace-pre-wrap break-all">
-                          {JSON.stringify(
-                            fullWorkflow,
-                            null,
-                            2
-                          )}
-                        </pre>
-                      </ScrollArea>}
-                    </DialogContent>
-                  </Dialog>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">No generator metadata found in this image.</p>
-              )}
-            </div>
-          </>
-        )}
+                        </ScrollArea>}
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No generator metadata found in this image.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </ScrollArea>
     </div>
   );
