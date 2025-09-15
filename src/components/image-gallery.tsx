@@ -10,6 +10,7 @@ import { LazyImage } from "./lazy-image";
 
 interface ImageGalleryProps {
   files: StoredImage[];
+  allImageMetadata: StoredImage[];
   selectedImageId: number | null;
   onSelectImage: (id: number) => void;
   gridCols: number;
@@ -23,7 +24,7 @@ interface ImageGalleryProps {
 
 export function ImageGallery({
   files,
-
+  allImageMetadata,
   selectedImageId,
   onSelectImage,
   gridCols,
@@ -58,7 +59,7 @@ export function ImageGallery({
 
     const updateFullscreenImage = async () => {
       if (isViewerOpen && selectedImageId !== null) {
-        const image = files.find(f => f.id === selectedImageId) ?? allImageMetadata.find(f => f.id === selectedImageId);
+        const image = allImageMetadata.find(f => f.id === selectedImageId);
         if (image) {
           const file = await getStoredImageFile(image.id);
           if (file) {
@@ -81,7 +82,7 @@ export function ImageGallery({
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedImageId, isViewerOpen]);
+  }, [selectedImageId, isViewerOpen, allImageMetadata]);
 
 
   React.useEffect(() => {
@@ -106,7 +107,6 @@ export function ImageGallery({
 
   const showPagination = totalPages > 1;
   const isSingleColumn = gridCols === 1;
-  const allImageMetadata = files;
 
   return (
     <>
