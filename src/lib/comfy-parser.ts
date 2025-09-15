@@ -55,13 +55,10 @@ const findPromptText = (workflow: any, startLink: any): string => {
 
 function extractPromptJson(prompt: string): string | null {
   // Match everything after "Prompt:" up to the end of the string
-  console.log('prompt', prompt)
   const match = prompt.match(/Prompt:(\{.*\})$/s);
   if (!match) {
     return null;
   }
-  console.log('match', match[1])
-  // const promptText = match[1].substring(jsonStart, jsonEnd + 1).replace(/NaN/g, "null");
 
   try {
     return match[1]
@@ -75,13 +72,11 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
   try {
     const buffer = await file.arrayBuffer();
     const view = new Uint8Array(buffer);
-    console.log('in function', view)
     let promptText: string | null | undefined = null;
     // Strategy 1: Try to parse as PNG and get 'prompt' metadata
     if (file.type === 'image/png') {
       try {
         promptText = getMetadata(view, "prompt");
-        console.log('promptText', promptText)
       } catch (e) {
         console.warn(`Could not read 'prompt' chunk from PNG ${file.name}, trying other methods.`, e);
       }
@@ -89,7 +84,6 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
 
     // Strategy 2: Try to parse EXIF data (for JPEG, WebP, etc.)
     if (!promptText) {
-      console.log('in promptText')
       try {
         const tags = ExifReader.load(buffer);
 
@@ -101,18 +95,13 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
           tags.Comment, tags?.Make?.description,
         ].flatMap(v => Array.isArray(v) ? v : [v]).filter(Boolean);
 
-        let workflow = null, prompt = null;
-
         for (const c of candidates) {
           if (typeof c !== "string") continue;
           promptText = extractPromptJson(c)
         }
 
-        console.log('workflow', workflow, 'prompt', prompt)
       } catch (e) {
-        console.log('e', e)
-        // This is expected if the file has no EXIF data or is not a supported format.
-        // We can safely ignore this error.
+        console.log('Error parsing non-png file:', e)
       }
     }
 
@@ -120,9 +109,6 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     if (!promptText) {
       return null;
     }
-
-    // --- From here, the logic is the same as before ---
-    // We have the workflow JSON string in `promptText`, now we parse it.
 
     const jsonStart = promptText.indexOf("{");
     const jsonEnd = promptText.lastIndexOf("}");
@@ -134,13 +120,13 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     let jsonString = promptText.substring(jsonStart, jsonEnd + 1).replace(/NaN/g, "null");
     const workflow = JSON.parse(jsonString);
 
-    const ksamplerNodeEntry = Object.entries(workflow).find(
-      ([, node]: [string, any]) =>
-        ["KSampler", "KSamplerAdvanced", "SharkSampler_Beta"].includes(node.class_type)
+    const ksamplerNodeEntry = Object.values(workflow).find(
+      (node: any) =>
+        ["KSampler", "KSamplerAdvanced", "SharkSampler_Beta", "SamplerCustomAdvanced"].includes(node.class_type)
     );
 
     const modelLoaderNode = Object.values(workflow).find(
-      (node: any) => ["CheckpointLoaderSimple", "CheckpointLoader", "UNet loader with Name (Image Saver)"].includes(node.class_type)
+      (node: any) => ["CheckpointLoaderSimple", "CheckpointLoader", "UNet loader with Name (Image Saver)", "UNETLoader", "UnetLoaderGGUF"].includes(node.class_type)
     ) as any;
     let model
     if (modelLoaderNode?.inputs?.ckpt_name) {
@@ -154,6 +140,18 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     ) as any[];
     const loras = loraLoaderNodes.map(node => node.inputs.lora_name).filter(Boolean);
 
+    const CFGGuider = Object.values(workflow).find(
+      (node: any) => node.class_type === "CFGGuider"
+    )
+
+    const scheduler = Object.values(workflow).find(
+      (node: any) => node.class_type === "BasicScheduler"
+    )
+
+    const seed = Object.values(workflow).find(
+      (node: any) => node.class_type === "RandomNoise"
+    )
+
     if (!ksamplerNodeEntry) {
       // Can't find a sampler, but we can still show the full workflow JSON.
       return {
@@ -162,24 +160,43 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
       };
     }
 
-    const ksamplerNode = ksamplerNodeEntry[1] as any;
-    const inputs = ksamplerNode.inputs;
+    const ksamplerNode = ksamplerNodeEntry as any;
+    const guiderNode = CFGGuider as any;
+    const schedulerNode = scheduler as any;
+    const seedNode = seed as any;
 
-    let prompt = findPromptText(workflow, inputs.positive);
-    let negativePrompt = findPromptText(workflow, inputs.negative);
+    const samplerInputs = ksamplerNode?.inputs
+    const guiderInputs = guiderNode?.inputs
+    const scheduleInputs = schedulerNode?.inputs
+    const seedInputs = seedNode?.inputs
+
+    let prompt = findPromptText(workflow, samplerInputs?.positive ?? guiderInputs?.positive);
+    let negativePrompt = findPromptText(workflow, samplerInputs?.negative ?? guiderInputs?.negative);
 
     // Fallback to searching by title if tracing fails
     if (prompt === "N/A") {
-      const positivePromptNode = Object.values(workflow).find(
-        (node: any) => node._meta?.title?.toLowerCase().includes("positive prompt")
+      const positivePromptNode = Object.values(workflow).find((node: any) => {
+        let match
+        match = node._meta?.title?.toLowerCase().includes("positive prompt")
+        if (match) return true
+        match = node._meta?.title?.toLowerCase().includes("Positive Prompt")
+        if (match) return true
+        return false
+      }
       ) as any;
       if (positivePromptNode?.inputs?.text) {
         prompt = findPromptText(workflow, positivePromptNode.inputs.text);
       }
     }
     if (negativePrompt === "N/A") {
-      const negativePromptNode = Object.values(workflow).find(
-        (node: any) => node._meta?.title?.toLowerCase().includes("negative prompt")
+      const negativePromptNode = Object.values(workflow).find((node: any) => {
+        let match
+        match = node._meta?.title?.toLowerCase().includes("negative prompt")
+        if (match) return true
+        match = node._meta?.title?.toLowerCase().includes("Negative Prompt")
+        if (match) return true
+        return false
+      }
       ) as any;
       if (negativePromptNode?.inputs?.text) {
         negativePrompt = findPromptText(workflow, negativePromptNode.inputs.text);
@@ -189,11 +206,11 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     const parsedData: ComfyMetadata = {
       prompt: prompt,
       negativePrompt: negativePrompt,
-      seed: resolveValue(workflow, inputs.seed) ?? "N/A",
-      cfg: resolveValue(workflow, inputs.cfg) ?? "N/A",
-      steps: resolveValue(workflow, inputs.steps) ?? "N/A",
-      sampler: resolveValue(workflow, inputs.sampler_name || inputs.sampler) ?? "N/A",
-      scheduler: resolveValue(workflow, inputs.scheduler) ?? "N/A",
+      seed: resolveValue(workflow, samplerInputs?.seed ?? seedInputs?.noise_seed) ?? "N/A",
+      cfg: resolveValue(workflow, samplerInputs?.cfg ?? guiderInputs?.cfg) ?? "N/A",
+      steps: resolveValue(workflow, samplerInputs?.steps ?? scheduleInputs?.steps) ?? "N/A",
+      sampler: resolveValue(workflow, samplerInputs?.sampler_name ?? samplerInputs.sampler) ?? "N/A",
+      scheduler: resolveValue(workflow, samplerInputs?.scheduler ?? scheduleInputs?.scheduler) ?? "N/A",
       model,
       loras,
       fullWorkflow: workflow,
