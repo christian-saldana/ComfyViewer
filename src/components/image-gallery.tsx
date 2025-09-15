@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+
 import { ImageIcon } from "lucide-react";
 
 import { GalleryPagination } from "@/components/gallery-pagination";
@@ -82,7 +83,7 @@ export function ImageGallery({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedImageId, isViewerOpen, allImageMetadata]);
 
 

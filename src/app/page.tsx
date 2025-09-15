@@ -1,16 +1,16 @@
 "use client";
 
 import * as React from "react";
-import {
-  ResizableHandle,
-  
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
+
 import { AppHeader } from "@/components/app-header";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
 import { Sidebar } from "@/components/sidebar";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { useImageFiltering } from "@/hooks/use-image-filtering";
 import { useImageSelection } from "@/hooks/use-image-selection";
 import { useImageStore } from "@/hooks/use-image-store";

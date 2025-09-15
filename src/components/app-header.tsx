@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -14,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 type SortBy = "lastModified" | "size";
 type SortOrder = "asc" | "desc";
