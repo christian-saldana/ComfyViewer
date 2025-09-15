@@ -18,7 +18,7 @@ export interface ComfyMetadata {
 
 // --- Workflow Extraction ---
 
-function getWorkflowStringFromPng(view: Uint8Array): string | null {
+function getWorkflowStringFromPng(view: Uint8Array): string | null | undefined {
   try {
     return getMetadata(view, "prompt");
   } catch (e) {
@@ -53,7 +53,7 @@ function getWorkflowStringFromExif(buffer: ArrayBuffer): string | null {
 
 async function getWorkflowJson(file: File): Promise<object | null> {
   const buffer = await file.arrayBuffer();
-  let workflowString: string | null = null;
+  let workflowString: string | null | undefined = null;
 
   if (file.type === 'image/png') {
     workflowString = getWorkflowStringFromPng(new Uint8Array(buffer));
