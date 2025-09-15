@@ -402,7 +402,7 @@ export default function Home() {
       <header className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-4">
 
-          <h1 className="text-xl font-bold">Image Viewer</h1>
+          <h1 className="text-xl font-bold">ComfyViewer</h1>
           {isLoading && progress > 0 && progress < 100 && (
             <div className="flex w-48 items-center gap-2">
               <Progress value={progress} className="w-full" />

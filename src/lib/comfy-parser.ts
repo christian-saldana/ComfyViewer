@@ -117,13 +117,15 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     );
 
     const modelLoaderNode = Object.values(workflow).find(
-      (node: any) => ["CheckpointLoaderSimple", "CheckpointLoader", "UNet loader with Name (Image Saver)", "UNETLoader", "UnetLoaderGGUF"].includes(node.class_type)
+      (node: any) => ["CheckpointLoaderSimple", "CheckpointLoader", "UNet loader with Name (Image Saver)", "UNETLoader", "UnetLoaderGGUF", "ChromaDiffusionLoader"].includes(node.class_type)
     ) as any;
     let model
     if (modelLoaderNode?.inputs?.ckpt_name) {
       model = modelLoaderNode?.inputs?.ckpt_name
     } else if (modelLoaderNode?.inputs?.unet_name) {
       model = modelLoaderNode?.inputs?.unet_name
+    } else {
+      model = "N/A"
     }
 
     const loraLoaderNodes = Object.values(workflow).filter(
@@ -200,7 +202,7 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
       seed: resolveValue(workflow, samplerInputs?.seed ?? seedInputs?.noise_seed) ?? "N/A",
       cfg: resolveValue(workflow, samplerInputs?.cfg ?? guiderInputs?.cfg) ?? "N/A",
       steps: resolveValue(workflow, samplerInputs?.steps ?? scheduleInputs?.steps) ?? "N/A",
-      sampler: resolveValue(workflow, samplerInputs?.sampler_name ?? samplerInputs.sampler) ?? "N/A",
+      sampler: resolveValue(workflow, samplerInputs?.sampler_name ?? samplerInputs?.sampler) ?? "N/A",
       scheduler: resolveValue(workflow, samplerInputs?.scheduler ?? scheduleInputs?.scheduler) ?? "N/A",
       model,
       loras,
