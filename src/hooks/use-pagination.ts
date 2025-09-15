@@ -5,7 +5,7 @@ import * as React from "react";
 const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96, 200];
 const ITEMS_PER_PAGE_KEY = "image-viewer-items-per-page";
 
-export function usePagination(totalItems: number, dependencies: any[]) {
+export function usePagination(totalItems: number, dependencies: React.DependencyList) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(ITEMS_PER_PAGE_OPTIONS[1]);
 

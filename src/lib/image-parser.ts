@@ -16,6 +16,22 @@ export interface ComfyMetadata {
   fullWorkflow: object;
 }
 
+// --- Type Definitions for Workflow Structure ---
+
+type Link = [string, number]; // [node_id, output_index]
+type InputValue = string | number | Link | undefined;
+
+interface WorkflowNode {
+  inputs: Record<string, InputValue>;
+  class_type: string;
+  _meta?: {
+    title?: string;
+  };
+}
+
+type WorkflowData = Record<string, WorkflowNode>;
+
+
 // --- Workflow Extraction ---
 
 function getWorkflowStringFromPng(view: Uint8Array): string | null | undefined {
@@ -51,7 +67,7 @@ function getWorkflowStringFromExif(buffer: ArrayBuffer): string | null {
   }
 }
 
-async function getWorkflowJson(file: File): Promise<object | null> {
+async function getWorkflowJson(file: File): Promise<WorkflowData | null> {
   const buffer = await file.arrayBuffer();
   let workflowString: string | null | undefined = null;
 
@@ -76,21 +92,22 @@ async function getWorkflowJson(file: File): Promise<object | null> {
 
 // --- Workflow Parsing Helpers ---
 
-const resolveValue = (workflow: any, input: any): any => {
+const resolveValue = (workflow: WorkflowData, input: InputValue): string | number => {
   if (!Array.isArray(input) || typeof input[0] !== 'string' || !workflow[input[0]]) {
-    return input;
+    return input ?? "N/A";
   }
   const sourceNode = workflow[input[0]];
   if (sourceNode?.inputs) {
     const keys = ['value', '_int', 'float', 'sampler_name'];
     for (const key of keys) {
-      if (sourceNode.inputs[key] !== undefined) return sourceNode.inputs[key];
+      const value = sourceNode.inputs[key];
+      if (value !== undefined) return value as string | number;
     }
   }
   return "N/A";
 };
 
-const findPromptText = (workflow: any, startLink: any): string => {
+const findPromptText = (workflow: WorkflowData, startLink: InputValue): string => {
   let currentLink = startLink;
   for (let i = 0; i < 10; i++) { // Safety break for cycles
     if (typeof currentLink === 'string') return currentLink;
@@ -107,18 +124,18 @@ const findPromptText = (workflow: any, startLink: any): string => {
   return "N/A";
 };
 
-const findNode = (workflow: any, classTypes: string[]): any | undefined => {
-  return Object.values(workflow).find((node: any) => classTypes.includes(node.class_type));
+const findNode = (workflow: WorkflowData, classTypes: string[]): WorkflowNode | undefined => {
+  return Object.values(workflow).find((node) => classTypes.includes(node.class_type));
 };
 
-const findNodeByTitle = (workflow: any, titles: string[]): any | undefined => {
+const findNodeByTitle = (workflow: WorkflowData, titles: string[]): WorkflowNode | undefined => {
   const lowerCaseTitles = titles.map(t => t.toLowerCase());
-  return Object.values(workflow).find((node: any) =>
+  return Object.values(workflow).find((node) =>
     node?._meta?.title && lowerCaseTitles.includes(node._meta.title.toLowerCase())
   );
 };
 
-function extractPrompts(workflow: any, samplerNode: any, guiderNode: any): { prompt: string, negativePrompt: string } {
+function extractPrompts(workflow: WorkflowData, samplerNode: WorkflowNode | undefined, guiderNode: WorkflowNode | undefined): { prompt: string, negativePrompt: string } {
   let prompt = findPromptText(workflow, samplerNode?.inputs?.positive ?? guiderNode?.inputs?.positive);
   let negativePrompt = findPromptText(workflow, samplerNode?.inputs?.negative ?? guiderNode?.inputs?.negative);
 
@@ -133,16 +150,16 @@ function extractPrompts(workflow: any, samplerNode: any, guiderNode: any): { pro
   return { prompt, negativePrompt };
 }
 
-function extractModelAndLoras(workflow: any): { model: string | null, loras: string[] } {
+function extractModelAndLoras(workflow: WorkflowData): { model: string | null, loras: string[] } {
   const modelLoaderNode = findNode(workflow, [
     "CheckpointLoaderSimple", "CheckpointLoader", "UNet loader with Name (Image Saver)",
     "UNETLoader", "UnetLoaderGGUF", "ChromaDiffusionLoader"
-  ]) as any;
+  ]);
 
-  let model: string | null = modelLoaderNode?.inputs?.ckpt_name ?? modelLoaderNode?.inputs?.unet_name ?? "N/A";
+  const model: string | null = (modelLoaderNode?.inputs?.ckpt_name as string) ?? (modelLoaderNode?.inputs?.unet_name as string) ?? "N/A";
 
-  const loraLoaderNodes = Object.values(workflow).filter((node: any) => node.class_type === "LoraLoader") as any[];
-  const loras = loraLoaderNodes.map(node => node.inputs.lora_name).filter(Boolean);
+  const loraLoaderNodes = Object.values(workflow).filter((node) => node.class_type === "LoraLoader");
+  const loras = loraLoaderNodes.map(node => node.inputs.lora_name as string).filter(Boolean);
 
   return { model, loras };
 }
@@ -180,8 +197,8 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
     seed: resolveValue(workflow, samplerInputs.seed ?? seedInputs?.noise_seed) ?? "N/A",
     cfg: resolveValue(workflow, samplerInputs.cfg ?? guiderInputs?.cfg) ?? "NA",
     steps: resolveValue(workflow, samplerInputs.steps ?? scheduleInputs?.steps) ?? "N/A",
-    sampler: resolveValue(workflow, samplerInputs.sampler_name ?? samplerInputs.sampler) ?? "N/A",
-    scheduler: resolveValue(workflow, samplerInputs.scheduler ?? scheduleInputs?.scheduler) ?? "N/A",
+    sampler: String(resolveValue(workflow, samplerInputs.sampler_name ?? samplerInputs.sampler) ?? "N/A"),
+    scheduler: String(resolveValue(workflow, samplerInputs.scheduler ?? scheduleInputs?.scheduler) ?? "N/A"),
     model,
     loras,
     fullWorkflow: workflow,

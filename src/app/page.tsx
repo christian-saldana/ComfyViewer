@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ResizableHandle,
+  
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
@@ -165,7 +166,6 @@ export default function Home() {
         ref={fileInputRef}
         onChange={handleFileSelectWrapper}
         className="hidden"
-        // @ts-ignore
         webkitdirectory="true"
         directory="true"
       />
