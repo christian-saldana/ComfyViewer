@@ -123,43 +123,49 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
   }
 
   const onProgressThrottled = onProgress ? (p: number) => requestAnimationFrame(() => onProgress(p)) : () => { };
-  let parsedCount = 0;
 
-  // Step 1: Parse all files in parallel to prepare the data.
   onProgressThrottled(0);
-  const preparedData = await Promise.all(files.map(async (file) => {
-    try {
-      const comfyMetadata = await parseComfyUiMetadata(file);
-      const metadata: StorableMetadata = {
-        name: file.name,
-        type: file.type,
-        lastModified: file.lastModified,
-        webkitRelativePath: file.webkitRelativePath,
-        thumbnail: '',
-        size: file.size,
-        workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
-        prompt: comfyMetadata?.prompt ?? null,
-        negativePrompt: comfyMetadata?.negativePrompt ?? null,
-        seed: comfyMetadata ? String(comfyMetadata.seed) : null,
-        cfg: comfyMetadata ? String(comfyMetadata.cfg) : null,
-        steps: comfyMetadata ? String(comfyMetadata.steps) : null,
-        sampler: comfyMetadata?.sampler ?? null,
-        scheduler: comfyMetadata?.scheduler ?? null,
-        model: comfyMetadata?.model ?? null,
-        loras: comfyMetadata?.loras ?? [],
-      };
+  const preparedData: { metadata: any, file: any }[] = []
 
-      parsedCount++;
-      onProgressThrottled((parsedCount / totalFiles) * 50); // Parsing is the first 50%
+  const parsingBatch = 500
+  let parsedCount = 0;
+  for (let i = 0; i < files.length; i += parsingBatch) {
+    const chunk = files.slice(i, i + parsingBatch);
 
-      return { metadata, file };
-    } catch (e) {
-      console.error(`Skipping file due to error during parsing: ${file.name}`, e);
-      parsedCount++;
-      onProgressThrottled((parsedCount / totalFiles) * 50);
-      return null;
-    }
-  }));
+    await Promise.all(chunk.map(async (file) => {
+      try {
+        const comfyMetadata = await parseComfyUiMetadata(file);
+        const metadata: StorableMetadata = {
+          name: file.name,
+          type: file.type,
+          lastModified: file.lastModified,
+          webkitRelativePath: file.webkitRelativePath,
+          thumbnail: '',
+          size: file.size,
+          workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
+          prompt: comfyMetadata?.prompt ?? null,
+          negativePrompt: comfyMetadata?.negativePrompt ?? null,
+          seed: comfyMetadata ? String(comfyMetadata.seed) : null,
+          cfg: comfyMetadata ? String(comfyMetadata.cfg) : null,
+          steps: comfyMetadata ? String(comfyMetadata.steps) : null,
+          sampler: comfyMetadata?.sampler ?? null,
+          scheduler: comfyMetadata?.scheduler ?? null,
+          model: comfyMetadata?.model ?? null,
+          loras: comfyMetadata?.loras ?? [],
+        };
+
+        parsedCount++;
+        onProgressThrottled((parsedCount / totalFiles) * 50); // Parsing is the first 50%
+
+        preparedData.push({ metadata, file });
+      } catch (e) {
+        console.error(`Skipping file due to error during parsing: ${file.name}`, e);
+        parsedCount++;
+        onProgressThrottled((parsedCount / totalFiles) * 50);
+        return null;
+      }
+    }))
+  }
 
   const validData = preparedData.filter(Boolean) as { metadata: StorableMetadata; file: File }[];
   const totalToStore = validData.length;
@@ -168,15 +174,14 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
     return;
   }
 
-  // Step 2: Store all valid data in a single transaction.
   const db = await getDb();
   const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite');
 
-  const batchSize = 500
+  const storingBatch = 1000
   let storedCount = 0;
-  for (let i = 0; i < totalToStore; i += batchSize) {
+  for (let i = 0; i < totalToStore; i += storingBatch) {
     try {
-      const chunk = validData.slice(i, i + batchSize);
+      const chunk = validData.slice(i, i + storingBatch);
       const tx = db.transaction([METADATA_STORE_NAME, IMAGE_FILES_STORE_NAME], 'readwrite')
       const meta = tx.objectStore(METADATA_STORE_NAME);
       const files = tx.objectStore(IMAGE_FILES_STORE_NAME);
