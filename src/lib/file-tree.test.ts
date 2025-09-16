@@ -1,4 +1,4 @@
-import { buildFileTree, FileTreeNode } from "./file-tree";
+import { buildFileTree } from "./file-tree";
 import { StoredImage } from "./image-db";
 
 // Mock StoredImage type for testing purposes

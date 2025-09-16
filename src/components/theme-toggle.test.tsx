@@ -1,6 +1,8 @@
 import React from "react";
+
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useTheme } from "next-themes";
+
 import { ThemeToggle } from "./theme-toggle";
 
 // Mock the useTheme hook
