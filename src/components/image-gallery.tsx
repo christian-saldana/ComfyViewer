@@ -108,7 +108,7 @@ export function ImageGallery({
     );
   }
 
-  const showPagination = totalPages > 1;
+  // const showPagination = totalPages > 1;
   const isSingleColumn = gridCols === 1;
 
   return (
@@ -154,16 +154,14 @@ export function ImageGallery({
             ))}
           </div>
         </div>
-        {showPagination && (
-          <GalleryPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={onItemsPerPageChange}
-            itemsPerPageOptions={itemsPerPageOptions}
-          />
-        )}
+        <GalleryPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={onItemsPerPageChange}
+          itemsPerPageOptions={itemsPerPageOptions}
+        />
       </div>
       <ComfyViewerDialog
         src={fullscreenImageSrc}
