@@ -115,7 +115,7 @@ export function ImageGallery({
     <>
       <div className="flex h-full flex-col">
         <div className="flex-grow overflow-auto p-4">
-          <div className="mb-2 flex justify-end">
+          <div className="mb-2 flex justify-start">
             <p className="text-sm text-muted-foreground">
               {totalImagesCount} {totalImagesCount === 1 ? "image" : "images"}
             </p>
