@@ -13,7 +13,7 @@ const fontSans = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Image Viewer",
+  title: "Comfy Viewer",
   description: "A local image viewer and metadata explorer.",
 };
 

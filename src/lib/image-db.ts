@@ -116,7 +116,6 @@ async function getDb() {
 }
 
 async function processAndStoreFiles(files: File[], onProgress?: (progress: number) => void) {
-  console.time('store')
   const totalFiles = files.length;
   if (totalFiles === 0) {
     onProgress?.(100);
@@ -204,7 +203,6 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
 
   await tx.done;
   onProgressThrottled(100);
-  console.timeEnd('store')
 }
 
 export async function storeImages(files: File[], onProgress?: (progress: number) => void) {
@@ -220,7 +218,6 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
   };
 
   const { info, canProceed } = await preflightQuotaOrPersist(incomingBytes, confirmPrompt);
-  console.log('info', info, 'canProceed', canProceed)
   if (!canProceed) {
     const neededGiB = toGiB(incomingBytes);
     const freeGiB = toGiB(Math.max(0, info.quota - info.usage));
