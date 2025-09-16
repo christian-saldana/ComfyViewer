@@ -1,6 +1,16 @@
 import React from "react";
+
 import { render, screen, fireEvent } from "@testing-library/react";
+
 import { AppHeader } from "./app-header";
+
+const mockResizeObserver = jest.fn(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
+window.ResizeObserver = mockResizeObserver;
 
 // Mock child components to isolate the AppHeader component
 jest.mock("./theme-toggle", () => ({
@@ -12,6 +22,7 @@ jest.mock("lucide-react", () => ({
   ...jest.requireActual("lucide-react"),
   ArrowUpNarrowWide: () => <div data-testid="icon-asc" />,
   ArrowDownWideNarrow: () => <div data-testid="icon-desc" />,
+  ResizeObserver: () => <div data-testid="icon-desc" />,
 }));
 
 describe("AppHeader", () => {

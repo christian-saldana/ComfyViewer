@@ -97,6 +97,7 @@ export function AppHeader({
             </SelectContent>
           </Select>
           <Button
+            aria-label="sort by"
             variant="ghost"
             size="icon"
             onClick={() => onSortOrderChange(sortOrder === "asc" ? "desc" : "asc")}
