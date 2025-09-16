@@ -4,8 +4,8 @@ import * as React from "react";
 
 import { ImageIcon } from "lucide-react";
 
-import { GalleryPagination } from "@/components/gallery-pagination";
 import { ComfyViewerDialog } from "@/components/comfy-viewer-dialog";
+import { GalleryPagination } from "@/components/gallery-pagination";
 import { LazyImage } from "@/components/lazy-image";
 import { getStoredImageFile, StoredImage } from "@/lib/image-db";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ interface ImageGalleryProps {
   itemsPerPage: number;
   onItemsPerPageChange: (value: number) => void;
   itemsPerPageOptions: number[];
+  totalImagesCount: number;
 }
 
 export function ImageGallery({
@@ -36,6 +37,7 @@ export function ImageGallery({
   itemsPerPage,
   onItemsPerPageChange,
   itemsPerPageOptions,
+  totalImagesCount,
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [fullscreenImageAlt, setFullscreenImageAlt] = React.useState("");
@@ -61,7 +63,7 @@ export function ImageGallery({
 
     const updateFullscreenImage = async () => {
       if (isViewerOpen && selectedImageId !== null) {
-        const image = allImageMetadata.find(f => f.id === selectedImageId);
+        const image = allImageMetadata.find((f) => f.id === selectedImageId);
         if (image) {
           const file = await getStoredImageFile(image.id);
           if (file) {
@@ -85,7 +87,6 @@ export function ImageGallery({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedImageId, isViewerOpen, allImageMetadata]);
-
 
   React.useEffect(() => {
     if (!isViewerOpen && fullscreenImageSrc) {
@@ -114,6 +115,11 @@ export function ImageGallery({
     <>
       <div className="flex h-full flex-col">
         <div className="flex-grow overflow-auto p-4">
+          <div className="mb-2 flex justify-end">
+            <p className="text-sm text-muted-foreground">
+              {totalImagesCount} {totalImagesCount === 1 ? "image" : "images"}
+            </p>
+          </div>
           <div
             className="grid gap-4"
             style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}

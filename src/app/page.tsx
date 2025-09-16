@@ -214,6 +214,7 @@ export default function Home() {
             itemsPerPage={itemsPerPage}
             onItemsPerPageChange={setItemsPerPage}
             itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
+            totalImagesCount={processedImages.length}
           />
         </ResizablePanel>
         <ResizableHandle />
