@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ComfyViewer
 
-## Getting Started
+**A local-first, in-browser image and metadata viewer for your AI-generated images, with a special focus on ComfyUI workflows.**
 
-First, run the development server:
+ComfyViewer is a tool designed for artists, developers, and enthusiasts who work with AI image generation tools. It allows you to load an entire folder of images directly into your browser, where you can browse, search, and inspect the rich metadata embedded within them. Your files are never uploaded to a server; all processing and storage happens locally on your machine using your browser's own database.
 
+## ✨ Features
+
+-   **100% Local & Private**: Your images are processed and stored in your browser's IndexedDB. They never leave your computer.
+-   **Rich Metadata Parsing**: Automatically extracts and displays detailed generation data from ComfyUI-generated images, including prompts, seeds, samplers, models, LoRAs, and the full JSON workflow.
+-   **Advanced Search & Filtering**: Quickly find images by filtering on any metadata field, such as prompt keywords, model names, or sampler types.
+-   **Familiar File-Tree Interface**: Navigate your image folders with a classic file-tree structure, just like on your desktop.
+-   **Customizable Layout**: Features resizable panels and a customizable grid view to tailor the interface to your liking.
+-   **Efficient & Fast**: Built with performance in mind, using lazy loading for images and an indexed database for quick searches.
+
+## 🛠️ Tech Stack
+
+ComfyViewer is built with a modern, simple, and effective tech stack:
+
+-   **Framework**: [Next.js](https://nextjs.org/) (App Router)
+-   **Language**: [TypeScript](https://www.typescriptlang.org/)
+-   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+-   **UI Components**: [Shadcn/UI](https://ui.shadcn.com/)
+-   **Local Storage**: [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) for all image and metadata storage.
+-   **Icons**: [Lucide React](https://lucide.dev/)
+
+## 🚀 Getting Started
+
+To run ComfyViewer on your local machine, follow these steps.
+
+### Prerequisites
+
+-   [Node.js](https://nodejs.org/en/) (v18 or later is recommended)
+-   A package manager like `npm`, `yarn`, `pnpm`, or `bun`.
+
+### Installation
+
+In your project terminal, install the necessary dependencies:
 ```bash
-npm run dev
+npm install
 # or
-yarn dev
+yarn install
 # or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Running the Application
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Once the dependencies are installed, run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Now, open [http://localhost:3000](http://localhost:3000) in your browser to start using ComfyViewer.
 
-## Learn More
+## 📖 How to Use
 
-To learn more about Next.js, take a look at the following resources:
+1.  Once the application is running, click the **"Select Folder"** button.
+2.  Your browser's file dialog will open. Choose a directory that contains your AI-generated images.
+3.  The application will process the folder, extract metadata, and store everything in your browser. This might take a moment for very large folders.
+4.  Once loaded, you can browse your images, click on them to view metadata, and use the search tools to filter your collection.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🤝 Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, please feel free to open an issue or submit a pull request.
 
-## Deploy on Vercel
+## 📄 License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is open-source and available under the license specified in the [LICENSE](LICENSE) file.
