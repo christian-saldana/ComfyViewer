@@ -107,6 +107,10 @@ export function Sidebar({
               />
             </CollapsibleContent>
           </Collapsible>
+          <Button onClick={onClearImages} variant="destructive" disabled={isLoading} className="w-full">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear All Images
+          </Button>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -130,10 +134,6 @@ export function Sidebar({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Button onClick={onClearImages} variant="destructive" disabled={isLoading} className="w-full">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Clear All Images
-          </Button>
         </div>
       </div>
       <ScrollArea className="flex-1">
