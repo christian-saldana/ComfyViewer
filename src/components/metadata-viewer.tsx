@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StoredImage } from "@/lib/image-db";
+
 import { WorkflowViewer } from "./workflow-viewer";
 
 interface MetadataViewerProps {
@@ -107,7 +108,7 @@ const LongMetadataItem = ({
 export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
   const [isWorkflowJsonFullscreen, setIsWorkflowJsonFullscreen] = React.useState(false);
   const [isWorkflowGraphFullscreen, setIsWorkflowGraphFullscreen] = React.useState(false);
-  const [fullWorkflow, setFullWorkflow] = React.useState<object | null>(null);
+  const [fullWorkflow, setFullWorkflow] = React.useState<Record<string, unknown> | null>(null);
 
   React.useEffect(() => {
     if (imageMetadata?.workflow) {
@@ -217,28 +218,30 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                           <AccordionTrigger className="flex-1 text-sm">
                             Full Workflow
                           </AccordionTrigger>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="ml-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsWorkflowGraphFullscreen(true);
-                            }}
-                          >
-                            <Workflow className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="ml-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsWorkflowJsonFullscreen(true);
-                            }}
-                          >
-                            <Maximize className="h-4 w-4" />
-                          </Button>
+                          <div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="ml-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsWorkflowGraphFullscreen(true);
+                              }}
+                            >
+                              <Workflow className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="ml-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsWorkflowJsonFullscreen(true);
+                              }}
+                            >
+                              <Maximize className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         <AccordionContent>
                           <ScrollArea className="h-64 w-full resize-y overflow-auto rounded-md border bg-muted/50 p-2">

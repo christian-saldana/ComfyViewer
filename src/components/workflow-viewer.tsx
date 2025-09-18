@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { FitScreen, ZoomIn, ZoomOut } from "lucide-react";
+import { Expand, ZoomIn, ZoomOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import ReactFlow, {
   Background,
@@ -134,7 +134,7 @@ export function WorkflowViewer({ workflowJson }: WorkflowViewerProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" onClick={handleFitView}>
-                    <FitScreen className="h-4 w-4" />
+                    <Expand className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Fit View</TooltipContent>
