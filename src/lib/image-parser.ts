@@ -135,8 +135,8 @@ const findNodeByTitle = (workflow: WorkflowData, titles: string[]): WorkflowNode
 };
 
 function extractPrompts(workflow: WorkflowData, samplerNode: WorkflowNode | undefined, guiderNode: WorkflowNode | undefined): { prompt: string, negativePrompt: string } {
-  let prompt = findPromptText(workflow, samplerNode?.inputs?.positive ?? guiderNode?.inputs?.positive);
-  let negativePrompt = findPromptText(workflow, samplerNode?.inputs?.negative ?? guiderNode?.inputs?.negative);
+  let prompt = findPromptText(workflow, guiderNode?.inputs?.conditioning ?? samplerNode?.inputs?.positive);
+  let negativePrompt = findPromptText(workflow, guiderNode?.inputs?.negative ?? samplerNode?.inputs?.negative);
 
   if (prompt === "N/A") {
     const positiveNode = findNodeByTitle(workflow, ["positive prompt", "Positive Prompt"]);
@@ -172,7 +172,7 @@ export async function parseComfyUiMetadata(file: File): Promise<ComfyMetadata | 
   const { model, loras } = extractModelAndLoras(workflow);
 
   const ksamplerNode = findNode(workflow, ["KSampler", "KSamplerAdvanced", "SharkSampler_Beta", "SamplerCustomAdvanced"]);
-  const guiderNode = findNode(workflow, ["CFGGuider"]);
+  const guiderNode = findNode(workflow, ["CFGGuider", "FluxGuidance"]);
   const schedulerNode = findNode(workflow, ["BasicScheduler"]);
   const seedNode = findNode(workflow, ["RandomNoise"]);
 

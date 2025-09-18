@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Copy, Info, Maximize } from "lucide-react";
+import { Copy, Info, Maximize, Workflow } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StoredImage } from "@/lib/image-db";
+import { WorkflowViewer } from "./workflow-viewer";
 
 interface MetadataViewerProps {
   imageFile: File | null;
@@ -95,7 +96,7 @@ const LongMetadataItem = ({
         )}
       </div>
       <div className="mt-1.5 w-full overflow-hidden rounded-md border bg-muted/30">
-        <ScrollArea className="h-28">
+        <ScrollArea className="h-full">
           <p className="p-2 text-sm leading-relaxed">{value}</p>
         </ScrollArea>
       </div>
@@ -104,7 +105,8 @@ const LongMetadataItem = ({
 };
 
 export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
-  const [isWorkflowFullscreen, setIsWorkflowFullscreen] = React.useState(false);
+  const [isWorkflowJsonFullscreen, setIsWorkflowJsonFullscreen] = React.useState(false);
+  const [isWorkflowGraphFullscreen, setIsWorkflowGraphFullscreen] = React.useState(false);
   const [fullWorkflow, setFullWorkflow] = React.useState<object | null>(null);
 
   React.useEffect(() => {
@@ -180,7 +182,7 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                         </div>}
                       />}
                       <LongMetadataItem
-                        label="Prompt"
+                        label="Positive Prompt"
                         value={imageMetadata.prompt}
                         isCopyable
                       />
@@ -213,7 +215,7 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                       <AccordionItem value="item-1">
                         <div className="flex items-center justify-between">
                           <AccordionTrigger className="flex-1 text-sm">
-                            Full Workflow (JSON)
+                            Full Workflow
                           </AccordionTrigger>
                           <Button
                             variant="ghost"
@@ -221,7 +223,18 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                             className="ml-2"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setIsWorkflowFullscreen(true);
+                              setIsWorkflowGraphFullscreen(true);
+                            }}
+                          >
+                            <Workflow className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="ml-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsWorkflowJsonFullscreen(true);
                             }}
                           >
                             <Maximize className="h-4 w-4" />
@@ -241,8 +254,8 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                       </AccordionItem>
                     </Accordion>}
                     <Dialog
-                      open={isWorkflowFullscreen}
-                      onOpenChange={setIsWorkflowFullscreen}
+                      open={isWorkflowJsonFullscreen}
+                      onOpenChange={setIsWorkflowJsonFullscreen}
                     >
                       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
                         <DialogHeader>
@@ -257,6 +270,19 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                             )}
                           </pre>
                         </ScrollArea>}
+                      </DialogContent>
+                    </Dialog>
+                    <Dialog
+                      open={isWorkflowGraphFullscreen}
+                      onOpenChange={setIsWorkflowGraphFullscreen}
+                    >
+                      <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
+                        <DialogHeader>
+                          <DialogTitle>Workflow Graph</DialogTitle>
+                        </DialogHeader>
+                        <div className="flex-1">
+                          <WorkflowViewer workflowJson={fullWorkflow} />
+                        </div>
                       </DialogContent>
                     </Dialog>
                   </>
