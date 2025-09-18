@@ -153,6 +153,12 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <MetadataItem label="File Name" value={imageMetadata.name} isCopyable />
+              {imageMetadata.width > 0 && imageMetadata.height > 0 && (
+                <MetadataItem
+                  label="Resolution"
+                  value={`${imageMetadata.width} x ${imageMetadata.height}`}
+                />
+              )}
               <MetadataItem label="File Size" value={`${(imageMetadata.size / 1024).toFixed(2)} KB`} />
               <MetadataItem label="File Type" value={imageMetadata.type} />
               <MetadataItem
