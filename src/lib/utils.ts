@@ -67,16 +67,28 @@ export async function ensurePersistentStorage(
  */
 export async function preflightQuotaOrPersist(incomingBytes: number, confirmPrompt?: () => Promise<boolean> | boolean) {
   let info = await getQuotaInfo();
-  // const fitsNow = info.usage + incomingBytes <= info.quota - (10 * 1024 * 1024); // leave ~10MB headroom
+  const headroom = 10 * 1024 * 1024; // 10MB headroom
 
-  // if (fitsNow) {
-  //   return { info, canProceed: true, requestedPersist: false };
-  // }
+  // If storage is already persistent, we just check if there's space.
+  // No need to prompt.
+  if (info.persisted) {
+    const canProceed = info.usage + incomingBytes <= info.quota - headroom;
+    return { info, canProceed, requestedPersist: false };
+  }
 
-  // Try to upgrade to persistent storage (esp. helpful on Firefox)
-  const persisted = await ensurePersistentStorage(confirmPrompt);
+  // If not persistent, check if the new files fit in the current temporary quota.
+  const fitsInTemporaryQuota = info.usage + incomingBytes <= info.quota - headroom;
+  if (fitsInTemporaryQuota) {
+    return { info, canProceed: true, requestedPersist: false };
+  }
+
+  // If we're here, it means storage is NOT persistent AND there's not enough space.
+  // This is the only time we should ask the user for permission.
+  const requestedAndGranted = await ensurePersistentStorage(confirmPrompt);
+
+  // Re-check quota info after potentially getting persistence.
   info = await getQuotaInfo();
-
-  const fitsAfter = info.usage + incomingBytes <= info.quota - (10 * 1024 * 1024);
-  return { info, canProceed: fitsAfter, requestedPersist: persisted };
+  const fitsAfterRequest = info.usage + incomingBytes <= info.quota - headroom;
+  
+  return { info, canProceed: fitsAfterRequest, requestedPersist: requestedAndGranted };
 }

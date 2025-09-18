@@ -8,7 +8,8 @@ import { isFirefox, preflightQuotaOrPersist, toGiB } from './utils';
 const DB_NAME = 'comfy-viewer-db';
 const METADATA_STORE_NAME = 'images';
 const IMAGE_FILES_STORE_NAME = 'image_files';
-const DB_VERSION = 12;
+const DIRECTORY_HANDLE_STORE_NAME = 'directory_handles';
+const DB_VERSION = 13;
 
 // This is the object we'll work with in the application
 export interface StoredImage {
@@ -78,6 +79,10 @@ interface MyDB extends DBSchema {
     key: number;
     value: File;
   };
+  [DIRECTORY_HANDLE_STORE_NAME]: {
+    key: string;
+    value: FileSystemDirectoryHandle;
+  };
 }
 
 async function getDb() {
@@ -110,6 +115,11 @@ async function getDb() {
         metadataStore.createIndex('by-loras', 'loras', { multiEntry: true });
 
         db.createObjectStore(IMAGE_FILES_STORE_NAME);
+      }
+      if (oldVersion < 13) {
+        if (!db.objectStoreNames.contains(DIRECTORY_HANDLE_STORE_NAME)) {
+          db.createObjectStore(DIRECTORY_HANDLE_STORE_NAME);
+        }
       }
     },
   });
@@ -309,6 +319,25 @@ export async function clearImages() {
   // Clear both object stores
   await Promise.all([
     db.clear(METADATA_STORE_NAME),
-    db.clear(IMAGE_FILES_STORE_NAME)
+    db.clear(IMAGE_FILES_STORE_NAME),
+    db.clear(DIRECTORY_HANDLE_STORE_NAME),
   ]);
+}
+
+// --- Directory Handle Management ---
+const HANDLE_KEY = 'main_directory_handle';
+
+export async function storeDirectoryHandle(handle: FileSystemDirectoryHandle) {
+  const db = await getDb();
+  await db.put(DIRECTORY_HANDLE_STORE_NAME, handle, HANDLE_KEY);
+}
+
+export async function getDirectoryHandle(): Promise<FileSystemDirectoryHandle | undefined> {
+  const db = await getDb();
+  return db.get(DIRECTORY_HANDLE_STORE_NAME, HANDLE_KEY);
+}
+
+export async function clearDirectoryHandle() {
+  const db = await getDb();
+  await db.delete(DIRECTORY_HANDLE_STORE_NAME, HANDLE_KEY);
 }

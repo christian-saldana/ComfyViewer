@@ -45,7 +45,7 @@ const MetadataItem = ({
   <div className="grid grid-cols-3 items-start gap-x-4 gap-y-1">
     <p className="text-sm font-medium text-muted-foreground col-span-1">{label}</p>
     <div className="col-span-2 flex items-start gap-2">
-      <p className="break-all text-sm">{value}</p>
+      <div className="break-all text-sm">{value}</div>
       {isCopyable && typeof value === 'string' && value && (
         <Button
           variant="ghost"

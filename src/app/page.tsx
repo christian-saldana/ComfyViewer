@@ -35,6 +35,7 @@ export default function Home() {
     handleClearImages,
     handleFolderSelectClick,
     handleRefreshClick,
+    hasModernAccess,
   } = useImageStore();
 
   const {
@@ -197,6 +198,7 @@ export default function Home() {
               onSelectPath={handleFolderSelect}
               selectedImageId={selectedImageId}
               onSelectFile={handleFileSelectFromTree}
+              hasModernAccess={hasModernAccess}
             />
           )}
         </ResizablePanel>

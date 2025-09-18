@@ -47,6 +47,7 @@ interface SidebarProps {
   onSelectPath: (path: string) => void;
   selectedImageId: number | null;
   onSelectFile: (id: number) => void;
+  hasModernAccess: boolean;
 }
 
 export function Sidebar({
@@ -66,6 +67,7 @@ export function Sidebar({
   onSelectPath,
   selectedImageId,
   onSelectFile,
+  hasModernAccess,
 }: SidebarProps) {
   return (
     <div className="flex h-full flex-col">
@@ -77,10 +79,19 @@ export function Sidebar({
               <Folder className="mr-2 h-4 w-4" />
               Select Folder
             </Button>
-            <Button onClick={onRefreshClick} variant="outline" disabled={isLoading}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={onRefreshClick} variant="outline" disabled={isLoading || !fileTree}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Refresh
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{hasModernAccess ? "Scan for new images in the selected folder." : "Select folder again to find new images."}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
