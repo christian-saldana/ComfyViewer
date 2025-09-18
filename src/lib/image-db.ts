@@ -91,9 +91,21 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
+      // Handle database upgrades sequentially.
+
+      if (oldVersion < 13) {
+        // This version introduced the directory handle store.
+        // This will run for fresh installs (oldVersion=0) and any version before 13.
+        if (!db.objectStoreNames.contains(DIRECTORY_HANDLE_STORE_NAME)) {
+          db.createObjectStore(DIRECTORY_HANDLE_STORE_NAME);
+        }
+      }
+
       if (oldVersion < 14) {
-        // The structure of the 'loras' property has changed from string[] to Lora[].
-        // The simplest, most reliable way to handle this is to recreate the stores.
+        // This version introduced a breaking change to the 'loras' property.
+        // We need to recreate the metadata and image file stores.
+        // This will run for fresh installs and any version before 14.
+
         if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
           db.deleteObjectStore(METADATA_STORE_NAME);
         }
@@ -117,11 +129,6 @@ async function getDb() {
         metadataStore.createIndex('by-model', 'model');
 
         db.createObjectStore(IMAGE_FILES_STORE_NAME);
-      }
-      if (oldVersion < 13 && oldVersion !== 0) { // Handle older versions if not starting from scratch
-        if (!db.objectStoreNames.contains(DIRECTORY_HANDLE_STORE_NAME)) {
-          db.createObjectStore(DIRECTORY_HANDLE_STORE_NAME);
-        }
       }
     },
   });
