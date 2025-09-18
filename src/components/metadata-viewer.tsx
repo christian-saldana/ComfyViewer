@@ -26,6 +26,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+import { Skeleton } from "@/components/ui/skeleton";
 import { StoredImage } from "@/lib/image-db";
 
 import { WorkflowViewer } from "./workflow-viewer";
@@ -140,6 +142,16 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
 
   const hasGeneratorMetadata = imageMetadata.prompt || imageMetadata.seed;
 
+  const renderResolution = () => {
+    if (imageMetadata.width === null || imageMetadata.height === null) {
+      return <Skeleton className="h-4 w-24" />;
+    }
+    if (imageMetadata.width > 0 && imageMetadata.height > 0) {
+      return `${imageMetadata.width} x ${imageMetadata.height}`;
+    }
+    return "N/A";
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b p-4">
@@ -153,12 +165,10 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <MetadataItem label="File Name" value={imageMetadata.name} isCopyable />
-              {imageMetadata.width > 0 && imageMetadata.height > 0 && (
-                <MetadataItem
-                  label="Resolution"
-                  value={`${imageMetadata.width} x ${imageMetadata.height}`}
-                />
-              )}
+              <MetadataItem
+                label="Resolution"
+                value={renderResolution()}
+              />
               <MetadataItem label="File Size" value={`${(imageMetadata.size / 1024).toFixed(2)} KB`} />
               <MetadataItem label="File Type" value={imageMetadata.type} />
               <MetadataItem
