@@ -3,6 +3,12 @@
 import ExifReader from 'exifreader';
 import { getMetadata } from 'meta-png';
 
+export interface Lora {
+  name: string;
+  strength_model: number | string;
+  strength_clip: number | string;
+}
+
 export interface ComfyMetadata {
   prompt: string;
   negativePrompt: string;
@@ -12,7 +18,7 @@ export interface ComfyMetadata {
   sampler: string;
   scheduler: string;
   model: string | null;
-  loras: string[];
+  loras: Lora[];
   fullWorkflow: object;
 }
 
@@ -127,6 +133,8 @@ const findNode = (workflow: WorkflowData, classTypes: string[]): WorkflowNode | 
   return Object.values(workflow).find((node) => classTypes.includes(node.class_type));
 };
 
+
+
 const findNodeByTitle = (workflow: WorkflowData, titles: string[]): WorkflowNode | undefined => {
   const lowerCaseTitles = titles.map(t => t.toLowerCase());
   return Object.values(workflow).find((node) =>
@@ -149,7 +157,7 @@ function extractPrompts(workflow: WorkflowData, samplerNode: WorkflowNode | unde
   return { prompt, negativePrompt };
 }
 
-function extractModelAndLoras(workflow: WorkflowData): { model: string | null, loras: string[] } {
+function extractModelAndLoras(workflow: WorkflowData): { model: string | null, loras: Lora[] } {
   const modelLoaderNode = findNode(workflow, [
     "CheckpointLoaderSimple", "CheckpointLoader", "UNet loader with Name (Image Saver)",
     "UNETLoader", "UnetLoaderGGUF", "ChromaDiffusionLoader"
@@ -158,7 +166,11 @@ function extractModelAndLoras(workflow: WorkflowData): { model: string | null, l
   const model: string | null = (modelLoaderNode?.inputs?.ckpt_name as string) ?? (modelLoaderNode?.inputs?.unet_name as string) ?? "N/A";
 
   const loraLoaderNodes = Object.values(workflow).filter((node) => node.class_type === "LoraLoader");
-  const loras = loraLoaderNodes.map(node => node.inputs.lora_name as string).filter(Boolean);
+  const loras: Lora[] = loraLoaderNodes.map(node => ({
+    name: node.inputs.lora_name as string,
+    strength_model: resolveValue(workflow, node.inputs.strength_model),
+    strength_clip: resolveValue(workflow, node.inputs.strength_clip),
+  })).filter(lora => lora.name);
 
   return { model, loras };
 }

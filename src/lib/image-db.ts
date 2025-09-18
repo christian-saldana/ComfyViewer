@@ -2,14 +2,14 @@
 
 import { DBSchema, openDB } from 'idb';
 
-import { parseComfyUiMetadata } from './image-parser';
+import { Lora, parseComfyUiMetadata } from './image-parser';
 import { isFirefox, preflightQuotaOrPersist, toGiB } from './utils';
 
 const DB_NAME = 'comfy-viewer-db';
 const METADATA_STORE_NAME = 'images';
 const IMAGE_FILES_STORE_NAME = 'image_files';
 const DIRECTORY_HANDLE_STORE_NAME = 'directory_handles';
-const DB_VERSION = 13;
+const DB_VERSION = 14;
 
 // This is the object we'll work with in the application
 export interface StoredImage {
@@ -32,7 +32,7 @@ export interface StoredImage {
   sampler: string | null;
   scheduler: string | null;
   model: string | null;
-  loras: string[];
+  loras: Lora[];
 }
 
 // This interface defines the shape of the data we'll store in IndexedDB.
@@ -55,7 +55,7 @@ interface StorableMetadata {
   sampler: string | null;
   scheduler: string | null;
   model: string | null;
-  loras: string[];
+  loras: Lora[];
 }
 
 interface MyDB extends DBSchema {
@@ -76,7 +76,6 @@ interface MyDB extends DBSchema {
       'by-sampler': string;
       'by-scheduler': string;
       'by-model': string;
-      'by-loras': string;
     };
   };
   [IMAGE_FILES_STORE_NAME]: {
@@ -92,12 +91,12 @@ interface MyDB extends DBSchema {
 async function getDb() {
   return openDB<MyDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      if (oldVersion < 12) {
-        // If the old metadata store exists, delete it to start fresh with the new structure.
+      if (oldVersion < 14) {
+        // The structure of the 'loras' property has changed from string[] to Lora[].
+        // The simplest, most reliable way to handle this is to recreate the stores.
         if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
           db.deleteObjectStore(METADATA_STORE_NAME);
         }
-        // If an old files store exists (from a previous attempt or different schema), delete it.
         if (db.objectStoreNames.contains(IMAGE_FILES_STORE_NAME)) {
           db.deleteObjectStore(IMAGE_FILES_STORE_NAME);
         }
@@ -116,11 +115,10 @@ async function getDb() {
         metadataStore.createIndex('by-sampler', 'sampler');
         metadataStore.createIndex('by-scheduler', 'scheduler');
         metadataStore.createIndex('by-model', 'model');
-        metadataStore.createIndex('by-loras', 'loras', { multiEntry: true });
 
         db.createObjectStore(IMAGE_FILES_STORE_NAME);
       }
-      if (oldVersion < 13) {
+      if (oldVersion < 13 && oldVersion !== 0) { // Handle older versions if not starting from scratch
         if (!db.objectStoreNames.contains(DIRECTORY_HANDLE_STORE_NAME)) {
           db.createObjectStore(DIRECTORY_HANDLE_STORE_NAME);
         }

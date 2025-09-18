@@ -182,12 +182,22 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                         value={imageMetadata.model}
                         isCopyable
                       />}
-                      {imageMetadata.loras && imageMetadata.loras.length > 0 && <MetadataItem
-                        label="LoRAs"
-                        value={<div className="flex flex-wrap gap-1 pt-1">
-                          {imageMetadata.loras.map((lora, i) => <Badge key={`${lora}-${i}`} variant="secondary">{lora}</Badge>)}
-                        </div>}
-                      />}
+                      {imageMetadata.loras && imageMetadata.loras.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">LoRAs</p>
+                          <div className="space-y-2">
+                            {imageMetadata.loras.map((lora, i) => (
+                              <div key={`${lora.name}-${i}`} className="p-2 border rounded-md bg-muted/50">
+                                <p className="font-semibold text-sm truncate">{lora.name}</p>
+                                <div className="flex text-xs text-muted-foreground mt-1">
+                                  <span className="mr-4">Model: {Number(lora.strength_model).toFixed(2)}</span>
+                                  <span>Clip: {Number(lora.strength_clip).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <LongMetadataItem
                         label="Positive Prompt"
                         value={imageMetadata.prompt}
