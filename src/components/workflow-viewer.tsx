@@ -7,7 +7,6 @@ import { useTheme } from "next-themes";
 import ReactFlow, {
   Background,
   ConnectionLineType,
-  Controls,
   Edge,
   Node,
   Panel,
@@ -113,7 +112,6 @@ export function WorkflowViewer({ workflowJson }: WorkflowViewerProps) {
         className={theme}
       >
         <Background />
-        <Controls />
         <Panel position="top-right">
           <TooltipProvider>
             <div className="flex space-x-2 rounded-md border bg-background p-1">
