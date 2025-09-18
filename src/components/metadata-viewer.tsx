@@ -241,6 +241,20 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                               className="ml-2"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                if (fullWorkflow) {
+                                  navigator.clipboard.writeText(JSON.stringify(fullWorkflow, null, 2));
+                                  toast.success("Copied full workflow to clipboard!");
+                                }
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="ml-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setIsWorkflowGraphFullscreen(true);
                               }}
                             >
