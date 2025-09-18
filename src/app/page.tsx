@@ -27,6 +27,7 @@ export default function Home() {
 
   const {
     allImageMetadata,
+    setAllImageMetadata,
     isLoading,
     progress,
     fileTree,
@@ -58,7 +59,7 @@ export default function Home() {
     setSelectedImageId,
     selectedImageFile,
     selectedImageMetadata,
-  } = useImageSelection(allImageMetadata);
+  } = useImageSelection(allImageMetadata, setAllImageMetadata);
 
   const {
     currentPage,

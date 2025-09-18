@@ -2,9 +2,25 @@
 
 import * as React from "react";
 
-import { getStoredImageFile, StoredImage } from "@/lib/image-db";
+import { getStoredImageFile, StoredImage, updateImageDimensions } from "@/lib/image-db";
 
-export function useImageSelection(allImageMetadata: StoredImage[]) {
+function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      resolve({ width: img.width, height: img.height });
+      URL.revokeObjectURL(objectUrl);
+    };
+    img.onerror = () => {
+      resolve({ width: 0, height: 0 });
+      URL.revokeObjectURL(objectUrl);
+    };
+    img.src = objectUrl;
+  });
+}
+
+export function useImageSelection(allImageMetadata: StoredImage[], setAllImageMetadata: React.Dispatch<React.SetStateAction<StoredImage[]>>) {
   const [selectedImageId, setSelectedImageId] = React.useState<number | null>(null);
   const [selectedImageFile, setSelectedImageFile] = React.useState<File | null>(null);
   const [selectedImageMetadata, setSelectedImageMetadata] = React.useState<StoredImage | null>(null);
@@ -20,15 +36,31 @@ export function useImageSelection(allImageMetadata: StoredImage[]) {
     setSelectedImageMetadata(metadata || null);
 
     let isCancelled = false;
-    async function fetchFile() {
+    async function fetchFileAndDimensions() {
       const file = await getStoredImageFile(selectedImageId!);
-      if (!isCancelled) {
-        setSelectedImageFile(file);
+      if (isCancelled || !file) return;
+
+      setSelectedImageFile(file);
+
+      if (metadata && (metadata.width === null || metadata.height === null)) {
+        const { width, height } = await getImageDimensions(file);
+        if (!isCancelled) {
+          await updateImageDimensions(selectedImageId!, width, height);
+          
+          // Update the local state to reflect the new dimensions immediately
+          const updatedMetadata = { ...metadata, width, height };
+          setSelectedImageMetadata(updatedMetadata);
+
+          // Also update the master list of metadata
+          setAllImageMetadata(prev => 
+            prev.map(img => img.id === selectedImageId ? updatedMetadata : img)
+          );
+        }
       }
     }
-    fetchFile();
+    fetchFileAndDimensions();
     return () => { isCancelled = true; };
-  }, [selectedImageId, allImageMetadata]);
+  }, [selectedImageId, allImageMetadata, setAllImageMetadata]);
 
   return {
     selectedImageId,

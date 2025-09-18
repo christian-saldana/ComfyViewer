@@ -19,8 +19,8 @@ export interface StoredImage {
   lastModified: number;
   webkitRelativePath: string;
   size: number;
-  width: number;
-  height: number;
+  width: number | null;
+  height: number | null;
   thumbnail: string;
   workflow: string | null;
   // Advanced metadata
@@ -43,8 +43,8 @@ interface StorableMetadata {
   webkitRelativePath: string;
   thumbnail: string;
   size: number;
-  width: number;
-  height: number;
+  width: number | null;
+  height: number | null;
   workflow: string | null;
   // Advanced metadata
   prompt: string | null;
@@ -134,33 +134,6 @@ async function getDb() {
   });
 }
 
-function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        resolve({ width: img.width, height: img.height });
-      };
-      img.onerror = (err) => {
-        console.error("Error loading image for dimension check:", err);
-        // Resolve with 0x0 so it doesn't block processing other images
-        resolve({ width: 0, height: 0 });
-      };
-      if (e.target?.result) {
-        img.src = e.target.result as string;
-      } else {
-        resolve({ width: 0, height: 0 });
-      }
-    };
-    reader.onerror = (err) => {
-      console.error("Error reading file for dimension check:", err);
-      resolve({ width: 0, height: 0 });
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 async function processAndStoreFiles(files: File[], onProgress?: (progress: number) => void) {
   const totalFiles = files.length;
   if (totalFiles === 0) {
@@ -180,9 +153,8 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
 
     await Promise.all(chunk.map(async (file) => {
       try {
-        const [comfyMetadata, dimensions] = await Promise.all([
+        const [comfyMetadata] = await Promise.all([
           parseComfyUiMetadata(file),
-          getImageDimensions(file),
         ]);
         const metadata: StorableMetadata = {
           name: file.name,
@@ -191,8 +163,8 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
           webkitRelativePath: file.webkitRelativePath,
           thumbnail: '',
           size: file.size,
-          width: dimensions.width,
-          height: dimensions.height,
+          width: null,
+          height: null,
           workflow: comfyMetadata ? JSON.stringify(comfyMetadata.fullWorkflow) : null,
           prompt: comfyMetadata?.prompt ?? null,
           negativePrompt: comfyMetadata?.negativePrompt ?? null,
@@ -363,6 +335,19 @@ export async function clearImages() {
     db.clear(IMAGE_FILES_STORE_NAME),
     db.clear(DIRECTORY_HANDLE_STORE_NAME),
   ]);
+}
+
+export async function updateImageDimensions(id: number, width: number, height: number) {
+  const db = await getDb();
+  const tx = db.transaction(METADATA_STORE_NAME, 'readwrite');
+  const store = tx.objectStore(METADATA_STORE_NAME);
+  const metadata = await store.get(id);
+  if (metadata) {
+    metadata.width = width;
+    metadata.height = height;
+    await store.put(metadata);
+  }
+  await tx.done;
 }
 
 // --- Directory Handle Management ---
