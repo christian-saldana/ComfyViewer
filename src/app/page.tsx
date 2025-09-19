@@ -16,6 +16,7 @@ import { useImageSelection } from "@/hooks/use-image-selection";
 import { useImageStore } from "@/hooks/use-image-store";
 import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
 import { usePagination } from "@/hooks/use-pagination";
+import { isFileSystemAccessAPISupported, useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 export default function Home() {
   const [selectedPath, setSelectedPath] = React.useState<string>("");
@@ -26,6 +27,7 @@ export default function Home() {
   const [jumpToImageId, setJumpToImageId] = React.useState<number | null>(null);
 
   const {
+    handleNewFiles,
     allImageMetadata,
     setAllImageMetadata,
     isLoading,
@@ -33,10 +35,8 @@ export default function Home() {
     fileTree,
     fileInputRef,
     handleFileSelect,
-    handleClearImages,
-    handleFolderSelectClick,
-    handleRefreshClick,
-    hasModernAccess,
+    handleClearAllData,
+    setIsRefreshMode
   } = useImageStore();
 
   const {
@@ -78,6 +78,9 @@ export default function Home() {
     advancedSearchState,
   ]);
 
+  const { directoryHandle, requestAndSetDirectory, scanForChanges, isScanning } =
+    useAutoRefresh(handleNewFiles);
+
   const paginatedFiles = getPaginatedItems(processedImages);
 
   useKeyboardNavigation({
@@ -89,12 +92,6 @@ export default function Home() {
     setCurrentPage,
     itemsPerPage,
   });
-
-  React.useEffect(() => {
-    if (fileTree && !selectedPath) {
-      setSelectedPath(fileTree.path);
-    }
-  }, [fileTree, selectedPath]);
 
   const handleFileSelectWrapper = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const result = await handleFileSelect(event);
@@ -108,8 +105,8 @@ export default function Home() {
     }
   };
 
-  const handleClearImagesWrapper = () => {
-    handleClearImages();
+  const handleClearAllDataWrapper = () => {
+    handleClearAllData();
     setSelectedPath("");
     setSelectedImageId(null);
     setCurrentPage(1);
@@ -137,6 +134,39 @@ export default function Home() {
     }
   };
 
+  const handleFolderSelectClick = async () => {
+    if (isFileSystemAccessAPISupported()) {
+      const handle = await requestAndSetDirectory();
+
+      if (handle) {
+        const { name } = handle;
+        if (name) {
+          setSelectedPath(name);
+        }
+        setSelectedImageId(null);
+        setCurrentPage(1);
+      }
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleRefreshClick = () => {
+    setIsRefreshMode(true);
+    if (directoryHandle) {
+      scanForChanges(false);
+    } else {
+      // Fallback for non-FSA API browsers or if no folder is selected
+      fileInputRef.current?.click();
+    }
+  };
+
+  React.useEffect(() => {
+    if (fileTree && !selectedPath) {
+      setSelectedPath(fileTree.path);
+    }
+  }, [fileTree, selectedPath]);
+
   React.useEffect(() => {
     if (jumpToImageId !== null && processedImages.length > 0) {
       const imageIndex = processedImages.findIndex(img => img.id === jumpToImageId);
@@ -154,7 +184,7 @@ export default function Home() {
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
       <AppHeader
-        isLoading={isLoading}
+        isLoading={isLoading || isScanning}
         progress={progress}
         gridCols={gridCols}
         onGridColsChange={setGridCols}
@@ -183,7 +213,7 @@ export default function Home() {
         >
           {!isLeftPanelCollapsed && (
             <Sidebar
-              isLoading={isLoading}
+              isLoading={isLoading || isScanning}
               onFolderSelectClick={handleFolderSelectClick}
               onRefreshClick={handleRefreshClick}
               filterQuery={filterQuery}
@@ -193,18 +223,18 @@ export default function Home() {
               onAdvancedSearchReset={handleAdvancedSearchReset}
               viewSubfolders={viewSubfolders}
               onViewSubfoldersChange={setViewSubfolders}
-              onClearImages={handleClearImagesWrapper}
+              onClearAllData={handleClearAllDataWrapper}
               fileTree={fileTree}
               selectedPath={selectedPath}
               onSelectPath={handleFolderSelect}
               selectedImageId={selectedImageId}
               onSelectFile={handleFileSelectFromTree}
-              hasModernAccess={hasModernAccess}
+              hasModernAccess={!!directoryHandle}
             />
           )}
         </ResizablePanel>
         <ResizableHandle />
-        <ResizablePanel defaultSize={55}>
+        <ResizablePanel defaultSize={65}>
           <ImageGallery
             files={paginatedFiles}
             allImageMetadata={allImageMetadata}

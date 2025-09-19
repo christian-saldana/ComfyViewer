@@ -45,7 +45,12 @@ To run ComfyViewer on your local machine, follow these steps.
 
 ### Installation
 
-In your project terminal, install the necessary dependencies:
+In your project terminal, clone ComfyViewer:
+```bash
+git clone git@github.com:christian-saldana/ComfyViewer.git
+```
+
+Then install the necessary dependencies:
 ```bash
 npm install
 # or

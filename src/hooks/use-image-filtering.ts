@@ -30,7 +30,6 @@ export function useImageFiltering(allImageMetadata: StoredImage[], selectedPath:
 
   const processedImages = React.useMemo(() => {
     if (!selectedPath) return [];
-
     let filtered = allImageMetadata.filter(image => {
       const parentDirectory = image.webkitRelativePath.substring(0, image.webkitRelativePath.lastIndexOf("/"));
       return viewSubfolders

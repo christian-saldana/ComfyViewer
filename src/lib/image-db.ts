@@ -333,7 +333,16 @@ export async function clearImages() {
   await Promise.all([
     db.clear(METADATA_STORE_NAME),
     db.clear(IMAGE_FILES_STORE_NAME),
-    db.clear(DIRECTORY_HANDLE_STORE_NAME),
+  ]);
+}
+
+export async function clearAllData() {
+  const db = await getDb();
+  // Clear both object stores
+  await Promise.all([
+    db.clear(METADATA_STORE_NAME),
+    db.clear(IMAGE_FILES_STORE_NAME),
+    db.clear(DIRECTORY_HANDLE_STORE_NAME)
   ]);
 }
 

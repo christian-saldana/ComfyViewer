@@ -41,7 +41,7 @@ interface SidebarProps {
   onAdvancedSearchReset: () => void;
   viewSubfolders: boolean;
   onViewSubfoldersChange: (value: boolean) => void;
-  onClearImages: () => void;
+  onClearAllData: () => void;
   fileTree: FileTreeNode | null;
   selectedPath: string;
   onSelectPath: (path: string) => void;
@@ -61,7 +61,7 @@ export function Sidebar({
   onAdvancedSearchReset,
   viewSubfolders,
   onViewSubfoldersChange,
-  onClearImages,
+  onClearAllData,
   fileTree,
   selectedPath,
   onSelectPath,
@@ -118,9 +118,9 @@ export function Sidebar({
               />
             </CollapsibleContent>
           </Collapsible>
-          <Button onClick={onClearImages} variant="destructive" disabled={isLoading} className="w-full">
+          <Button onClick={onClearAllData} variant="destructive" disabled={isLoading} className="w-full">
             <Trash2 className="mr-2 h-4 w-4" />
-            Clear All Images
+            Clear All Data
           </Button>
           <TooltipProvider>
             <Tooltip>

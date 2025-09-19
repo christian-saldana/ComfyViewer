@@ -23,6 +23,7 @@ async function verifyPermission(handle: FileSystemDirectoryHandle) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -54,6 +55,8 @@ async function getFilesFromDirectory(
   return getFilesRecursively(dirHandle, dirHandle.name);
 }
 
+const LAST_SCAN_TIME_KEY = "comfy-viewer-last-scan-time";
+
 export function useAutoRefresh(
   onNewFiles: (files: File[], isInitialScan: boolean) => Promise<void>
 ) {
@@ -62,10 +65,16 @@ export function useAutoRefresh(
   const [isScanning, setIsScanning] = React.useState(false);
   const lastScanTimeRef = React.useRef<number>(0);
 
-  // Load handle from DB on mount
+  // Load handle and last scan time from storage on mount
   React.useEffect(() => {
     if (!isFileSystemAccessAPISupported()) return;
-    const loadHandle = async () => {
+
+    const loadInitialState = async () => {
+      const storedTime = localStorage.getItem(LAST_SCAN_TIME_KEY);
+      if (storedTime) {
+        lastScanTimeRef.current = parseInt(storedTime, 10);
+      }
+
       const handle = await getDirectoryHandle();
       if (handle) {
         if (await verifyPermission(handle)) {
@@ -75,7 +84,7 @@ export function useAutoRefresh(
         }
       }
     };
-    loadHandle();
+    loadInitialState();
   }, []);
 
   const requestAndSetDirectory = async () => {
@@ -84,6 +93,9 @@ export function useAutoRefresh(
         const handle = await window.showDirectoryPicker();
         await storeDirectoryHandle(handle);
         setDirectoryHandle(handle);
+        // This is a new directory selection, so reset the scan time to ensure a full scan.
+        lastScanTimeRef.current = 0;
+        localStorage.removeItem(LAST_SCAN_TIME_KEY);
         return handle;
       } else {
         toast.error("Your browser does not support this feature.");
@@ -120,7 +132,12 @@ export function useAutoRefresh(
         } else if (!isInitialScan) {
           toast.info("No new images found.");
         }
-        lastScanTimeRef.current = Date.now();
+
+        // Persist the new scan time after a successful scan
+        const now = Date.now();
+        lastScanTimeRef.current = now;
+        localStorage.setItem(LAST_SCAN_TIME_KEY, String(now));
+
       } catch (error) {
         console.error("Error scanning for changes:", error);
         toast.error("An error occurred while scanning for new images.");
@@ -134,8 +151,9 @@ export function useAutoRefresh(
   // Initial scan when a directory handle is first set
   React.useEffect(() => {
     if (directoryHandle) {
-      lastScanTimeRef.current = 0; // Reset to scan all files
-      scanForChanges(true);
+      // If lastScanTime is 0, it's a fresh folder, so treat it as an initial scan.
+      // Otherwise, it's a refresh, so don't treat it as an initial scan.
+      scanForChanges(lastScanTimeRef.current === 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directoryHandle]);
