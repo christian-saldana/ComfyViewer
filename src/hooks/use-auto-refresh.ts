@@ -14,11 +14,14 @@ export const isFileSystemAccessAPISupported = () =>
 
 async function verifyPermission(handle: FileSystemDirectoryHandle) {
   const options = { mode: "read" as const };
-  if ((await handle.queryPermission(options)) === "granted") {
-    return true;
-  }
-  if ((await handle.requestPermission(options)) === "granted") {
-    return true;
+
+  if (handle.queryPermission && handle.requestPermission) {
+    if ((await handle.queryPermission(options)) === "granted") {
+      return true;
+    }
+    if ((await handle.requestPermission(options)) === "granted") {
+      return true;
+    }
   }
   return false;
 }
@@ -76,15 +79,16 @@ export function useAutoRefresh(
   }, []);
 
   const requestAndSetDirectory = async () => {
-    if (!isFileSystemAccessAPISupported()) {
-      toast.error("Your browser does not support this feature.");
-      return null;
-    }
     try {
-      const handle = await window.showDirectoryPicker();
-      await storeDirectoryHandle(handle);
-      setDirectoryHandle(handle);
-      return handle;
+      if (window.showDirectoryPicker) {
+        const handle = await window.showDirectoryPicker();
+        await storeDirectoryHandle(handle);
+        setDirectoryHandle(handle);
+        return handle;
+      } else {
+        toast.error("Your browser does not support this feature.");
+        return null;
+      }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         console.error("Error selecting directory:", err);

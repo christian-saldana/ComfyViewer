@@ -23,6 +23,7 @@ interface ImageGalleryProps {
   onItemsPerPageChange: (value: number) => void;
   itemsPerPageOptions: number[];
   totalImagesCount: number;
+  setAllImageMetadata: (value: number) => void
 }
 
 export function ImageGallery({
@@ -38,6 +39,7 @@ export function ImageGallery({
   onItemsPerPageChange,
   itemsPerPageOptions,
   totalImagesCount,
+  setAllImageMetadata
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [fullscreenImageAlt, setFullscreenImageAlt] = React.useState("");
@@ -139,6 +141,8 @@ export function ImageGallery({
               >
                 <LazyImage
                   imageId={image.id}
+                  setAllImageMetadata={setAllImageMetadata}
+                  allImageMetadata={allImageMetadata}
                   alt={image.name}
                   className={cn(
                     "h-full w-full",

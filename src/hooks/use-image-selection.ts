@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { getStoredImageFile, StoredImage, updateImageDimensions } from "@/lib/image-db";
 
-function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+export function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -46,13 +46,13 @@ export function useImageSelection(allImageMetadata: StoredImage[], setAllImageMe
         const { width, height } = await getImageDimensions(file);
         if (!isCancelled) {
           await updateImageDimensions(selectedImageId!, width, height);
-          
+
           // Update the local state to reflect the new dimensions immediately
           const updatedMetadata = { ...metadata, width, height };
           setSelectedImageMetadata(updatedMetadata);
 
           // Also update the master list of metadata
-          setAllImageMetadata(prev => 
+          setAllImageMetadata(prev =>
             prev.map(img => img.id === selectedImageId ? updatedMetadata : img)
           );
         }
