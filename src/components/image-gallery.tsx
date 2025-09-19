@@ -23,7 +23,7 @@ interface ImageGalleryProps {
   onItemsPerPageChange: (value: number) => void;
   itemsPerPageOptions: number[];
   totalImagesCount: number;
-  setAllImageMetadata: (value: number) => void
+  setAllImageMetadata: React.Dispatch<React.SetStateAction<StoredImage[]>>
 }
 
 export function ImageGallery({

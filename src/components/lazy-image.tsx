@@ -3,12 +3,12 @@
 import * as React from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { getStoredImageFile } from "@/lib/image-db";
+import { getStoredImageFile, StoredImage } from "@/lib/image-db";
 
 interface LazyImageProps {
   imageId: number;
-  setAllImageMetadata: any;
-  allImageMetadata: any;
+  setAllImageMetadata: React.Dispatch<React.SetStateAction<StoredImage[]>>;
+  allImageMetadata: StoredImage[];
   alt: string;
   className: string;
 }
@@ -40,7 +40,7 @@ export function LazyImage({ imageId, setAllImageMetadata, allImageMetadata, alt,
     const metadata = allImageMetadata.find(img => img.id === imageId);
 
     const currentRef = placeholderRef.current;
-    if (currentRef) {
+    if (currentRef && metadata) {
       observer = new IntersectionObserver(
         async ([entry]) => {
           if (entry.isIntersecting) {
@@ -75,7 +75,7 @@ export function LazyImage({ imageId, setAllImageMetadata, allImageMetadata, alt,
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [imageId]);
+  }, [allImageMetadata, imageId, setAllImageMetadata]);
 
   if (imageSrc) {
     return <img src={imageSrc} alt={alt} className={className} />;

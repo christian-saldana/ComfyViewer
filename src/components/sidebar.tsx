@@ -70,7 +70,7 @@ export function Sidebar({
   hasModernAccess,
 }: SidebarProps) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col min-w-[300px]">
       <div className="border-b p-4">
         <div className="w-full max-w-sm space-y-4">
           <h2 className="text-lg font-semibold">Folders</h2>

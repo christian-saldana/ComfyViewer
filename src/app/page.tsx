@@ -174,7 +174,7 @@ export default function Home() {
 
       <ResizablePanelGroup direction="horizontal" className="w-full">
         <ResizablePanel
-          defaultSize={20}
+          defaultSize={15}
           minSize={4}
           collapsible
           collapsedSize={4}
@@ -223,7 +223,7 @@ export default function Home() {
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel
-          defaultSize={25}
+          defaultSize={20}
           minSize={4}
           collapsible
           collapsedSize={4}

@@ -144,7 +144,7 @@ async function processAndStoreFiles(files: File[], onProgress?: (progress: numbe
   const onProgressThrottled = onProgress ? (p: number) => requestAnimationFrame(() => onProgress(p)) : () => { };
 
   onProgressThrottled(0);
-  const preparedData: { metadata: any, file: any }[] = []
+  const preparedData: { metadata: StorableMetadata, file: File }[] = []
 
   const parsingBatch = 500
   let parsedCount = 0;

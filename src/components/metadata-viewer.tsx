@@ -11,7 +11,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -152,7 +151,7 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col min-w-[300px]">
       <div className="flex items-center justify-between border-b p-4">
         <h2 className="text-lg font-semibold">Metadata</h2>
       </div>
@@ -197,7 +196,7 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                           <div className="space-y-2">
                             {imageMetadata.loras.map((lora, i) => (
                               <div key={`${lora.name}-${i}`} className="p-2 border rounded-md bg-muted/50">
-                                <p className="font-semibold text-sm truncate">{lora.name}</p>
+                                <p className="font-semibold text-sm">{lora.name}</p>
                                 <div className="flex text-xs text-muted-foreground mt-1">
                                   <span className="mr-4">Model: {Number(lora.strength_model).toFixed(2)}</span>
                                   <span>Clip: {Number(lora.strength_clip).toFixed(2)}</span>

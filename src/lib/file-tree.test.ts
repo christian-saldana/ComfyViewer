@@ -13,6 +13,8 @@ const createMockImage = (
   lastModified,
   type: "image/png",
   size: 1024,
+  width: 1024,
+  height: 1024,
   thumbnail: "",
   workflow: null,
   prompt: null,
@@ -29,7 +31,9 @@ const createMockImage = (
 describe("buildFileTree", () => {
   it("should return null for empty or invalid input", () => {
     expect(buildFileTree([])).toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(buildFileTree(null as any)).toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(buildFileTree(undefined as any)).toBeNull();
   });
 
