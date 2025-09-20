@@ -13,11 +13,15 @@ ComfyViewer is a tool designed for artists, developers, and enthusiasts who work
 ![](./assets/full_size.png)
 *Full image view*
 
+![](./assets/workflow.png)
+*Workflow View*
+
 ## ✨ Features
 
 -   **100% Local & Private**: Your images are processed and stored in your browser's IndexedDB. They never leave your computer.
 -   **Efficient & Fast**: Built with performance in mind, using lazy loading for images and an indexed database for quick searches.
 -   **Rich Metadata Parsing**: Automatically extracts and displays detailed generation data from ComfyUI-generated images, including prompts, seeds, samplers, models, LoRAs, and the full JSON workflow.
+-   **Workflow View**: Quickly view the workflow used to generate the image
 -   **Advanced Search & Filtering**: Quickly find images by filtering on any metadata field, such as prompt keywords, model names, or sampler types.
 -   **Familiar File-Tree Interface**: Navigate your image folders with a classic file-tree structure, just like on your desktop.
 -   **Customizable Layout**: Features resizable panels and a customizable grid view to tailor the interface to your liking.
