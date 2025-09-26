@@ -7,8 +7,9 @@ import { ImageIcon } from "lucide-react";
 import { ComfyViewerDialog } from "@/components/comfy-viewer-dialog";
 import { GalleryPagination } from "@/components/gallery-pagination";
 import { LazyImage } from "@/components/lazy-image";
-import { getStoredImageFile, StoredImage } from "@/lib/image-db";
+import { StoredImage } from "@/lib/image-db";
 import { cn } from "@/lib/utils";
+import { ITEMS_PER_PAGE_OPTIONS } from "@/hooks/use-pagination"; // Import here
 
 interface ImageGalleryProps {
   files: StoredImage[];
@@ -23,7 +24,7 @@ interface ImageGalleryProps {
   onItemsPerPageChange: (value: number) => void;
   itemsPerPageOptions: number[];
   totalImagesCount: number;
-  setAllImageMetadata: React.Dispatch<React.SetStateAction<StoredImage[]>>
+  folderPath: string; // New prop for the base folder path
 }
 
 export function ImageGallery({
@@ -37,22 +38,20 @@ export function ImageGallery({
   onPageChange,
   itemsPerPage,
   onItemsPerPageChange,
-  itemsPerPageOptions,
   totalImagesCount,
-  setAllImageMetadata
+  folderPath, // Destructure new prop
 }: ImageGalleryProps) {
   const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
   const [fullscreenImageAlt, setFullscreenImageAlt] = React.useState("");
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
 
   const openViewer = async (image: StoredImage) => {
-    const file = await getStoredImageFile(image.id);
-    if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setFullscreenImageSrc(objectUrl);
-      setFullscreenImageAlt(image.name);
-      setIsViewerOpen(true);
-    }
+    if (!image?.fullPath) return
+    // Construct the API URL for the full-screen image
+    const imageUrl = `/api/image?path=${encodeURIComponent(image.fullPath)}`;
+    setFullscreenImageSrc(imageUrl);
+    setFullscreenImageAlt(image.name);
+    setIsViewerOpen(true);
   };
 
   const handleDoubleClick = (image: StoredImage) => {
@@ -61,38 +60,21 @@ export function ImageGallery({
   };
 
   React.useEffect(() => {
-    let objectUrl: string | null = null;
-
-    const updateFullscreenImage = async () => {
-      if (isViewerOpen && selectedImageId !== null) {
-        const image = allImageMetadata.find((f) => f.id === selectedImageId);
-        if (image) {
-          const file = await getStoredImageFile(image.id);
-          if (file) {
-            if (fullscreenImageSrc) {
-              URL.revokeObjectURL(fullscreenImageSrc);
-            }
-            objectUrl = URL.createObjectURL(file);
-            setFullscreenImageSrc(objectUrl);
-            setFullscreenImageAlt(image.name);
-          }
-        }
+    // When selectedImageId changes and viewer is open, update the fullscreen image
+    if (isViewerOpen && selectedImageId !== null) {
+      const image = allImageMetadata.find((f) => f.id === selectedImageId);
+      if (image && image.fullPath) {
+        const imageUrl = `/api/image?path=${encodeURIComponent(image.fullPath)}`;
+        setFullscreenImageSrc(imageUrl);
+        setFullscreenImageAlt(image.name);
       }
-    };
-
-    updateFullscreenImage();
-
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedImageId, isViewerOpen, allImageMetadata]);
+  }, [selectedImageId, isViewerOpen, allImageMetadata, folderPath]); // Add folderPath to dependencies
 
   React.useEffect(() => {
+    // When viewer closes, clear the fullscreen image src
     if (!isViewerOpen && fullscreenImageSrc) {
-      URL.revokeObjectURL(fullscreenImageSrc);
       setFullscreenImageSrc(null);
       setFullscreenImageAlt("");
     }
@@ -110,7 +92,6 @@ export function ImageGallery({
     );
   }
 
-  // const showPagination = totalPages > 1;
   const isSingleColumn = gridCols === 1;
 
   return (
@@ -141,8 +122,8 @@ export function ImageGallery({
               >
                 <LazyImage
                   imageId={image.id}
-                  setAllImageMetadata={setAllImageMetadata}
-                  allImageMetadata={allImageMetadata}
+                  imagePath={image.fullPath || ''} // Pass imagePath
+                  folderPath={folderPath} // Pass folderPath
                   alt={image.name}
                   className={cn(
                     "h-full w-full",
@@ -164,7 +145,7 @@ export function ImageGallery({
           onPageChange={onPageChange}
           itemsPerPage={itemsPerPage}
           onItemsPerPageChange={onItemsPerPageChange}
-          itemsPerPageOptions={itemsPerPageOptions}
+          itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
         />
       </div>
       <ComfyViewerDialog

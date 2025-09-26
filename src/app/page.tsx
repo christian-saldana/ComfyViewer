@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { toast } from "sonner";
+
 import { AppHeader } from "@/components/app-header";
 import { ImageGallery } from "@/components/image-gallery";
 import { MetadataViewer } from "@/components/metadata-viewer";
@@ -16,7 +18,9 @@ import { useImageSelection } from "@/hooks/use-image-selection";
 import { useImageStore } from "@/hooks/use-image-store";
 import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
 import { usePagination } from "@/hooks/use-pagination";
-import { isFileSystemAccessAPISupported, useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { StoredImage, storeMetadataOnly, getAllStoredImageMetadata } from "@/lib/image-db";
+
+const FOLDER_PATH_KEY = "comfy-viewer-folder-path";
 
 export default function Home() {
   const [selectedPath, setSelectedPath] = React.useState<string>("");
@@ -25,18 +29,18 @@ export default function Home() {
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = React.useState(false);
   const isJumpingRef = React.useRef(false);
   const [jumpToImageId, setJumpToImageId] = React.useState<number | null>(null);
+  const [folderPathInput, setFolderPathInput] = React.useState<string>("");
+
 
   const {
-    handleNewFiles,
     allImageMetadata,
     setAllImageMetadata,
     isLoading,
+    setIsLoading,
     progress,
+    setProgress,
     fileTree,
-    fileInputRef,
-    handleFileSelect,
     handleClearAllData,
-    setIsRefreshMode
   } = useImageStore();
 
   const {
@@ -78,9 +82,6 @@ export default function Home() {
     advancedSearchState,
   ]);
 
-  const { directoryHandle, requestAndSetDirectory, scanForChanges, isScanning } =
-    useAutoRefresh(handleNewFiles);
-
   const paginatedFiles = getPaginatedItems(processedImages);
 
   useKeyboardNavigation({
@@ -93,23 +94,20 @@ export default function Home() {
     itemsPerPage,
   });
 
-  const handleFileSelectWrapper = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const result = await handleFileSelect(event);
-    if (result) {
-      const { isRefresh, newTree } = result;
-      if (!isRefresh && newTree) {
-        setSelectedPath(newTree.path);
-      }
-      setSelectedImageId(null);
-      setCurrentPage(1);
+  React.useEffect(() => {
+    const storedPath = localStorage.getItem(FOLDER_PATH_KEY);
+    if (storedPath) {
+      setFolderPathInput(storedPath);
     }
-  };
+  }, []);
 
   const handleClearAllDataWrapper = () => {
     handleClearAllData();
     setSelectedPath("");
     setSelectedImageId(null);
     setCurrentPage(1);
+    localStorage.removeItem(FOLDER_PATH_KEY);
+    setFolderPathInput("");
   };
 
   const handleFolderSelect = (path: string) => {
@@ -134,30 +132,107 @@ export default function Home() {
     }
   };
 
-  const handleFolderSelectClick = async () => {
-    if (isFileSystemAccessAPISupported()) {
-      const handle = await requestAndSetDirectory();
+  const handleRefreshClick = async () => {
+    setIsLoading(true);
+    try {
+      const existingPaths = allImageMetadata.map(img => img.fullPath).filter(Boolean);
+      const selectedFolderPath = localStorage.getItem(FOLDER_PATH_KEY)
 
-      if (handle) {
-        const { name } = handle;
-        if (name) {
-          setSelectedPath(name);
-        }
-        setSelectedImageId(null);
-        setCurrentPage(1);
+      if (!selectedFolderPath) throw Error('No folder has been selected.')
+
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: selectedFolderPath, existingPaths }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to scan for new images.');
       }
-    } else {
-      fileInputRef.current?.click();
+
+      const newImages: StoredImage[] = await response.json();
+
+      if (newImages.length > 0) {
+        const rootFolderName = selectedFolderPath.split(/[/\\]/).filter(Boolean).pop() || 'root';
+        const processedNewImages = newImages.map(meta => ({
+          ...meta,
+          webkitRelativePath: `${rootFolderName}/${meta.webkitRelativePath}`,
+        }));
+
+        await storeMetadataOnly(processedNewImages);
+        const updatedMetadata = await getAllStoredImageMetadata();
+        setAllImageMetadata(updatedMetadata);
+        toast.success(`${newImages.length} new image(s) found and added.`);
+      } else {
+        toast.info("No new images found.");
+      }
+    } catch (error) {
+      console.error("Error refreshing folder:", error);
+      toast.error((error as Error).message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRefreshClick = () => {
-    setIsRefreshMode(true);
-    if (directoryHandle) {
-      scanForChanges(false);
-    } else {
-      // Fallback for non-FSA API browsers or if no folder is selected
-      fileInputRef.current?.click();
+  const handleLoadFolderPath = async () => {
+    if (!folderPathInput) {
+      toast.error("Please enter a folder path.");
+      return;
+    }
+
+    localStorage.setItem(FOLDER_PATH_KEY, folderPathInput);
+    setIsLoading(true);
+    setProgress(0);
+    setAllImageMetadata([]); // Clear existing images immediately
+
+    try {
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path: folderPathInput }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to scan folder.');
+      }
+
+      const metadataArray: StoredImage[] = await response.json();
+
+      if (metadataArray.length === 0) {
+        toast.info("No images found in the specified folder.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Clear existing data before adding new data
+      await handleClearAllData();
+
+      const rootFolderName = folderPathInput.split(/[/\\]/).filter(Boolean).pop() || 'root';
+
+      const processedMetadata = metadataArray.map((meta) => ({
+        ...meta,
+        webkitRelativePath: `${rootFolderName}/${meta.webkitRelativePath}`,
+      }));
+
+      await storeMetadataOnly(processedMetadata, (p) => setProgress(p));
+
+      // After storing, fetch from DB to get the final IDs
+      const finalMetadata = await getAllStoredImageMetadata();
+      setAllImageMetadata(finalMetadata);
+      setSelectedPath(rootFolderName)
+
+      toast.success(`Successfully loaded ${processedMetadata.length} images from ${folderPathInput}.`);
+
+    } catch (error) {
+      console.error("Error loading folder from path:", error);
+      toast.error((error as Error).message || "Failed to load folder from path.");
+    } finally {
+      setIsLoading(false);
+      setProgress(0);
     }
   };
 
@@ -184,7 +259,7 @@ export default function Home() {
   return (
     <div className="grid h-full grid-rows-[auto_1fr]">
       <AppHeader
-        isLoading={isLoading || isScanning}
+        isLoading={isLoading}
         progress={progress}
         gridCols={gridCols}
         onGridColsChange={setGridCols}
@@ -193,18 +268,10 @@ export default function Home() {
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
       />
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileSelectWrapper}
-        className="hidden"
-        webkitdirectory="true"
-        directory="true"
-      />
 
       <ResizablePanelGroup direction="horizontal" className="w-full">
         <ResizablePanel
-          defaultSize={15}
+          defaultSize={20}
           minSize={4}
           collapsible
           collapsedSize={4}
@@ -213,8 +280,7 @@ export default function Home() {
         >
           {!isLeftPanelCollapsed && (
             <Sidebar
-              isLoading={isLoading || isScanning}
-              onFolderSelectClick={handleFolderSelectClick}
+              isLoading={isLoading}
               onRefreshClick={handleRefreshClick}
               filterQuery={filterQuery}
               onFilterQueryChange={setFilterQuery}
@@ -229,12 +295,14 @@ export default function Home() {
               onSelectPath={handleFolderSelect}
               selectedImageId={selectedImageId}
               onSelectFile={handleFileSelectFromTree}
-              hasModernAccess={!!directoryHandle}
+              folderPathInput={folderPathInput}
+              onFolderPathInputChange={setFolderPathInput}
+              onLoadFolderPath={handleLoadFolderPath}
             />
           )}
         </ResizablePanel>
         <ResizableHandle />
-        <ResizablePanel defaultSize={65}>
+        <ResizablePanel defaultSize={60}>
           <ImageGallery
             files={paginatedFiles}
             allImageMetadata={allImageMetadata}
@@ -248,7 +316,7 @@ export default function Home() {
             onItemsPerPageChange={setItemsPerPage}
             itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
             totalImagesCount={processedImages.length}
-            setAllImageMetadata={setAllImageMetadata}
+            folderPath={folderPathInput} // Pass folderPathInput here
           />
         </ResizablePanel>
         <ResizableHandle />

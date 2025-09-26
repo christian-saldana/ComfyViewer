@@ -33,6 +33,7 @@ export interface StoredImage {
   scheduler: string | null;
   model: string | null;
   loras: Lora[];
+  fullPath?: string;
 }
 
 // This interface defines the shape of the data we'll store in IndexedDB.
@@ -56,6 +57,7 @@ interface StorableMetadata {
   scheduler: string | null;
   model: string | null;
   loras: Lora[];
+  fullPath?: string;
 }
 
 interface MyDB extends DBSchema {
@@ -259,6 +261,31 @@ export async function storeImages(files: File[], onProgress?: (progress: number)
   await clearImages();
   await processAndStoreFiles(files, onProgress);
 }
+
+export async function storeMetadataOnly(metadataArray: StoredImage[], onProgress?: (progress: number) => void) {
+  const db = await getDb();
+  const tx = db.transaction(METADATA_STORE_NAME, 'readwrite');
+  const store = tx.objectStore(METADATA_STORE_NAME);
+
+  let storedCount = 0;
+  const totalToStore = metadataArray.length;
+
+  for (const metadata of metadataArray) {
+    try {
+      // The metadata object from the server might have an 'id' if we're not careful,
+      // but it's safer to remove it to ensure IndexedDB's autoIncrement works correctly.
+      const { id, ...storableMetadata } = metadata;
+      await store.add(storableMetadata);
+      storedCount++;
+      onProgress?.((storedCount / totalToStore) * 100);
+    } catch (e) {
+      console.error(`Error storing metadata for ${metadata.name}:`, e);
+    }
+  }
+  await tx.done;
+  onProgress?.(100);
+}
+
 
 export async function addNewImages(files: File[], onProgress?: (progress: number) => void): Promise<number> {
   const existingMetadata = await getAllStoredImageMetadata();
