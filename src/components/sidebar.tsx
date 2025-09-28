@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import {
-  Folder,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -32,7 +31,6 @@ import { FileTreeNode } from "@/lib/file-tree";
 
 interface SidebarProps {
   isLoading: boolean;
-  onFolderSelectClick: () => void;
   onRefreshClick: () => void;
   filterQuery: string;
   onFilterQueryChange: (query: string) => void;
@@ -47,12 +45,13 @@ interface SidebarProps {
   onSelectPath: (path: string) => void;
   selectedImageId: number | null;
   onSelectFile: (id: number) => void;
-  hasModernAccess: boolean;
+  folderPathInput: string;
+  onFolderPathInputChange: (path: string) => void;
+  onLoadFolderPath: () => void;
 }
 
 export function Sidebar({
   isLoading,
-  onFolderSelectClick,
   onRefreshClick,
   filterQuery,
   onFilterQueryChange,
@@ -67,18 +66,32 @@ export function Sidebar({
   onSelectPath,
   selectedImageId,
   onSelectFile,
-  hasModernAccess,
+  folderPathInput,
+  onFolderPathInputChange,
+  onLoadFolderPath,
 }: SidebarProps) {
   return (
     <div className="flex h-full flex-col min-w-[300px]">
       <div className="border-b p-4">
         <div className="w-full max-w-sm space-y-4">
           <h2 className="text-lg font-semibold">Folders</h2>
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={onFolderSelectClick} variant="outline" disabled={isLoading}>
-              <Folder className="mr-2 h-4 w-4" />
-              Select Folder
-            </Button>
+          <div className="grid w-full items-center gap-1.5">
+            <Label htmlFor="folder-path">Folder Path</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="folder-path"
+                type="text"
+                placeholder="e.g., C:\Users\User\Images"
+                value={folderPathInput}
+                onChange={(e) => onFolderPathInputChange(e.target.value)}
+                disabled={isLoading}
+              />
+              <Button onClick={onLoadFolderPath} disabled={isLoading || !folderPathInput}>
+                Load
+              </Button>
+            </div>
+          </div>
+          <div>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -88,7 +101,7 @@ export function Sidebar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{hasModernAccess ? "Scan for new images in the selected folder." : "Select folder again to find new images."}</p>
+                  <p>{"Scan for new images in the selected folder."}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

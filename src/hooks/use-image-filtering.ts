@@ -64,7 +64,6 @@ export function useImageFiltering(allImageMetadata: StoredImage[], selectedPath:
       if (compareA === compareB) return 0;
       return sortOrder === 'asc' ? (compareA > compareB ? 1 : -1) : (compareA < compareB ? 1 : -1);
     });
-
     return filtered;
   }, [allImageMetadata, selectedPath, viewSubfolders, debouncedFilterQuery, debouncedAdvancedSearch, sortBy, sortOrder]);
 

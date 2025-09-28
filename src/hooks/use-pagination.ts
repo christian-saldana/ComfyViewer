@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96, 200];
+export const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48, 96];
 const ITEMS_PER_PAGE_KEY = "comfy-viewer-items-per-page";
 
 export function usePagination(totalItems: number, dependencies: React.DependencyList) {
