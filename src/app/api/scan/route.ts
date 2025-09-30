@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { scanDirectory } from '../scanner-utils';
+import scanDirectory from './extractors';
 
 export async function POST(req: NextRequest) {
   try {

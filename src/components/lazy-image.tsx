@@ -5,6 +5,7 @@ import * as React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LazyImageProps {
+  fileType: string;
   imageId: number;
   imagePath: string; // The webkitRelativePath of the image
   folderPath: string; // The absolute base folder path
@@ -12,9 +13,10 @@ interface LazyImageProps {
   className: string;
 }
 
-export function LazyImage({ imageId, imagePath, folderPath, alt, className }: LazyImageProps) {
-  const [imageSrc, setImageSrc] = React.useState<string | null>(null);
+export function LazyImage({ fileType, imageId, imagePath, folderPath, alt, className }: LazyImageProps) {
+  const [mediaSrc, setMediaSrc] = React.useState<string | null>(null);
   const placeholderRef = React.useRef<HTMLDivElement>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   React.useEffect(() => {
     let observer: IntersectionObserver;
@@ -26,7 +28,7 @@ export function LazyImage({ imageId, imagePath, folderPath, alt, className }: La
           if (entry.isIntersecting) {
             // Fetch image from the new API route
             const imageUrl = `/api/image?path=${encodeURIComponent(imagePath)}`;
-            setImageSrc(imageUrl);
+            setMediaSrc(imageUrl);
             observer.unobserve(currentRef);
           }
         },
@@ -45,8 +47,26 @@ export function LazyImage({ imageId, imagePath, folderPath, alt, className }: La
     };
   }, [imageId, imagePath, folderPath]);
 
-  if (imageSrc) {
-    return <img src={imageSrc} alt={alt} className={className} />;
+  if (fileType?.startsWith("image") && mediaSrc) {
+    return <img src={mediaSrc} alt={alt} className={className} />;
+  } else if (mediaSrc) {
+    return (
+      <video
+        ref={videoRef}
+        src={mediaSrc}
+        muted
+        loop
+        playsInline
+        className={className}
+        onMouseEnter={() => videoRef.current?.play()}
+        onMouseLeave={() => {
+          if (videoRef.current) {
+            videoRef.current.pause();
+            videoRef.current.currentTime = 0; // reset to start if you want
+          }
+        }}
+      />
+    );
   }
 
   return (

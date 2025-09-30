@@ -149,7 +149,7 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
     }
     return "N/A";
   };
-
+  console.log('imageMetadat', imageMetadata)
   return (
     <div className="flex h-full flex-col min-w-[300px]">
       <div className="flex items-center justify-between border-b p-4">
@@ -184,6 +184,32 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
               <CardContent className="space-y-4">
                 {hasGeneratorMetadata ? (
                   <>
+                    <div className="gap-x-4 gap-y-3 pt-2">
+                      {imageMetadata.seed && <MetadataItem label="Seed" value={String(imageMetadata.seed)} isCopyable />}
+                      {imageMetadata.cfg && <MetadataItem
+                        label="CFG Scale"
+                        value={String(imageMetadata.cfg)}
+                        isCopyable
+                      />}
+                      {imageMetadata.guidance && <MetadataItem
+                        label="Guidance"
+                        value={String(imageMetadata.guidance)}
+                        isCopyable
+                      />}
+                      {imageMetadata.steps && <MetadataItem label="Steps" value={String(imageMetadata.steps)} isCopyable />}
+                      {imageMetadata.frameRate && <MetadataItem label="Frame Rate" value={String(imageMetadata.frameRate)} isCopyable />}
+                      {imageMetadata.duration && <MetadataItem label="Duration" value={String(imageMetadata.duration) + "s"} isCopyable />}
+                      {imageMetadata.sampler && <MetadataItem
+                        label="Sampler"
+                        value={imageMetadata.sampler}
+                        isCopyable
+                      />}
+                      {imageMetadata.scheduler && <MetadataItem
+                        label="Scheduler"
+                        value={imageMetadata.scheduler}
+                        isCopyable
+                      />}
+                    </div>
                     <div className="space-y-3">
                       {imageMetadata.model && <MetadataItem
                         label="Model"
@@ -199,7 +225,7 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                                 <p className="font-semibold text-sm">{lora.name}</p>
                                 <div className="flex text-xs text-muted-foreground mt-1">
                                   <span className="mr-4">Model: {Number(lora.strength_model).toFixed(2)}</span>
-                                  <span>Clip: {Number(lora.strength_clip).toFixed(2)}</span>
+                                  {typeof lora.strength_clip === 'number' && <span>Clip: {Number(lora.strength_clip).toFixed(2)}</span>}
                                 </div>
                               </div>
                             ))}
@@ -216,25 +242,6 @@ export function MetadataViewer({ imageMetadata }: MetadataViewerProps) {
                         value={imageMetadata.negativePrompt}
                         isCopyable
                       />
-                      <div className="gap-x-4 gap-y-3 pt-2">
-                        {imageMetadata.seed && <MetadataItem label="Seed" value={String(imageMetadata.seed)} isCopyable />}
-                        {imageMetadata.cfg && <MetadataItem
-                          label="CFG Scale"
-                          value={String(imageMetadata.cfg)}
-                          isCopyable
-                        />}
-                        {imageMetadata.steps && <MetadataItem label="Steps" value={String(imageMetadata.steps)} isCopyable />}
-                        {imageMetadata.sampler && <MetadataItem
-                          label="Sampler"
-                          value={imageMetadata.sampler}
-                          isCopyable
-                        />}
-                        {imageMetadata.scheduler && <MetadataItem
-                          label="Scheduler"
-                          value={imageMetadata.scheduler}
-                          isCopyable
-                        />}
-                      </div>
                     </div>
                     {fullWorkflow && <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value="item-1">

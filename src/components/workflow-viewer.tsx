@@ -39,7 +39,6 @@ export function WorkflowViewer({ workflowJson }: WorkflowViewerProps) {
   const [reactFlowInstance, setReactFlowInstance] =
     React.useState<ReactFlowInstance | null>(null);
   const { theme } = useTheme();
-
   React.useEffect(() => {
     if (!workflowJson) {
       setNodes([]);

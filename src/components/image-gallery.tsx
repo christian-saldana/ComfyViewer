@@ -41,16 +41,22 @@ export function ImageGallery({
   totalImagesCount,
   folderPath, // Destructure new prop
 }: ImageGalleryProps) {
-  const [fullscreenImageSrc, setFullscreenImageSrc] = React.useState<string | null>(null);
+  const [fullscreenMediaSrc, setfullscreenMediaSrc] = React.useState<string | null>(null);
   const [fullscreenImageAlt, setFullscreenImageAlt] = React.useState("");
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
+  const [fileType, setFileType] = React.useState("");
 
   const openViewer = async (image: StoredImage) => {
     if (!image?.fullPath) return
     // Construct the API URL for the full-screen image
     const imageUrl = `/api/image?path=${encodeURIComponent(image.fullPath)}`;
-    setFullscreenImageSrc(imageUrl);
+    if (image.type.substring(0, 5) === 'image') {
+      setFileType("image")
+    } else {
+      setFileType("video")
+    }
     setFullscreenImageAlt(image.name);
+    setfullscreenMediaSrc(imageUrl);
     setIsViewerOpen(true);
   };
 
@@ -65,8 +71,13 @@ export function ImageGallery({
       const image = allImageMetadata.find((f) => f.id === selectedImageId);
       if (image && image.fullPath) {
         const imageUrl = `/api/image?path=${encodeURIComponent(image.fullPath)}`;
-        setFullscreenImageSrc(imageUrl);
+        setfullscreenMediaSrc(imageUrl);
         setFullscreenImageAlt(image.name);
+        if (image.type.substring(0, 5) === 'image') {
+          setFileType("image")
+        } else {
+          setFileType("video")
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,11 +85,12 @@ export function ImageGallery({
 
   React.useEffect(() => {
     // When viewer closes, clear the fullscreen image src
-    if (!isViewerOpen && fullscreenImageSrc) {
-      setFullscreenImageSrc(null);
+    if (!isViewerOpen && fullscreenMediaSrc) {
+      setfullscreenMediaSrc(null);
       setFullscreenImageAlt("");
+      setFileType("")
     }
-  }, [isViewerOpen, fullscreenImageSrc]);
+  }, [isViewerOpen, fullscreenMediaSrc]);
 
   if (files.length === 0) {
     return (
@@ -121,6 +133,7 @@ export function ImageGallery({
                 onDoubleClick={() => handleDoubleClick(image)}
               >
                 <LazyImage
+                  fileType={image.type}
                   imageId={image.id}
                   imagePath={image.fullPath || ''} // Pass imagePath
                   folderPath={folderPath} // Pass folderPath
@@ -149,7 +162,8 @@ export function ImageGallery({
         />
       </div>
       <ComfyViewerDialog
-        src={fullscreenImageSrc}
+        fileType={fileType}
+        src={fullscreenMediaSrc}
         alt={fullscreenImageAlt}
         open={isViewerOpen}
         onOpenChange={setIsViewerOpen}
